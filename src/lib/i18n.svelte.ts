@@ -340,5 +340,27 @@ const FR: Record<string, string> = {
   'Collect samples, site A': 'Prélever les échantillons, site A',
   'Collect samples, site B': 'Prélever les échantillons, site B',
   'Draft field report': 'Rédiger le rapport de terrain',
-  'Step {n}': 'Étape {n}'
+  'Step {n}': 'Étape {n}',
+
+  // subtasks, planning, history
+  'Timer paused': 'Chrono en pause',
+  'Due date and estimate': 'Échéance et estimation',
+  'The task itself': 'La tâche elle-même',
+  'Planned for the week of {d}': 'Prévue pour la semaine du {d}',
+  '{n} week over': '{n} semaine de retard',
+  '{n} weeks over': '{n} semaines de retard',
+  'Carried over · {n} week': 'Reportée · {n} semaine',
+  'Carried over · {n} weeks': 'Reportée · {n} semaines',
+  History: 'Historique',
+  'Everything you have worked on': 'Tout ce sur quoi vous avez travaillé',
+  'Search tasks and subtasks': 'Rechercher tâches et sous-tâches',
+  'Clear search': 'Effacer la recherche',
+  Open: 'En cours',
+  Finished: 'Terminées',
+  '{n} task': '{n} tâche',
+  '{n} tasks': '{n} tâches',
+  'Nothing matches your search.': 'Rien ne correspond à votre recherche.',
+  'No tasks yet.': 'Aucune tâche pour l’instant.',
+  Started: 'Commencée',
+  subtasks: 'sous-tâches'
 };

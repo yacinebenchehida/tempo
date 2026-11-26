@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { Task } from '../lib/types';
-  import { db, ui, clock, projectById, taskTime, moveTask } from '../lib/store.svelte';
+  import { db, ui, clock, projectById, taskTime, moveTask, carriedWeeks } from '../lib/store.svelte';
   import { toggle, stop } from '../lib/timer.svelte';
   import { fmtDur, fmtDue } from '../lib/time';
   import Icon from './Icon.svelte';
   import Mascot from './Mascot.svelte';
-  import { t } from '../lib/i18n.svelte';
+  import { t, tp } from '../lib/i18n.svelte';
 
   let { task, celebrateId = null }: { task: Task; celebrateId?: string | null } = $props();
 
@@ -18,6 +18,13 @@
   const subDone = $derived(task.subtasks.filter((s) => s.done).length);
   const due = $derived(task.due ? fmtDue(task.due, clock.now) : null);
   const over = $derived(task.estimate > 0 && spent > task.estimate * 60000);
+  const carried = $derived(carriedWeeks(task, clock.now));
+  const currentSub = $derived(isCurrent && db.timer.subtaskId ? task.subtasks.find((s) => s.id === db.timer.subtaskId) : null);
+  const nextSubDue = $derived(
+    task.subtasks
+      .filter((s) => !s.done && s.due)
+      .sort((a, b) => (a.due! < b.due! ? -1 : 1))[0] ?? null
+  );
 
   function finish(e: MouseEvent) {
     e.stopPropagation();
@@ -28,7 +35,7 @@
   }
   function play(e: MouseEvent) {
     e.stopPropagation();
-    toggle(task.id);
+    toggle(task.id, isCurrent ? undefined : null);
   }
 </script>
 
@@ -43,6 +50,12 @@
       </span>
     </div>
     <div class="title">{task.title}</div>
+    {#if currentSub}
+      <div class="cursub"><Icon name={isRunning ? 'play' : 'pause'} size={9} /><span>{currentSub.title}</span></div>
+    {/if}
+    {#if carried && !done}
+      <div class="carried" title={t('Planned for the week of {d}', { d: task.plannedWeek ?? '' })}>{tp(carried, 'Carried over · {n} week', 'Carried over · {n} weeks')}</div>
+    {/if}
     <div class="facts">
       <span class="dots" title={t('Difficulty {d} of 3', { d: task.difficulty })} aria-label={t('Difficulty {d} of 3', { d: task.difficulty })}>
         {#each [1, 2, 3] as i}<span class:on={i <= task.difficulty}></span>{/each}
@@ -50,7 +63,8 @@
       {#if task.subtasks.length}
         <span class="sub"><span class="bar"><span style:width="{(subDone / task.subtasks.length) * 100}%"></span></span>{subDone}/{task.subtasks.length}</span>
       {/if}
-      {#if due && !done}<span class="due" class:overdue={due.overdue} class:soon={due.soon}>{due.overdue ? t('Overdue · ') : ''}{due.text}</span>{/if}
+      {#if due && !done}<span class="due" class:overdue={due.overdue} class:soon={due.soon}>{due.overdue ? t('Overdue · ') : ''}{due.text}</span>
+      {:else if nextSubDue && !done}{@const d = fmtDue(nextSubDue.due!, clock.now)}<span class="due sub-due" class:overdue={d.overdue} title={nextSubDue.title}>› {d.text}</span>{/if}
     </div>
     <div class="foot">
       <span class="num spent" class:strong={isRunning}>{fmtDur(spent)}</span>
@@ -85,6 +99,10 @@
   .proj { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .prio { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; flex: none; }
   .title { font-size: 14px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+  .cursub { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--c); margin-top: -4px; }
+  .cursub span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .carried { align-self: flex-start; font-size: 11px; font-weight: 600; color: #8a1c12; background: #fdecea; border-radius: 6px; padding: 2px 7px; margin-top: -3px; }
+  .sub-due { font-weight: 500; }
   .facts { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-3); flex-wrap: wrap; }
   .dots { display: inline-flex; gap: 3px; }
   .dots span { width: 7px; height: 7px; border-radius: 4px; background: #d9dde3; }

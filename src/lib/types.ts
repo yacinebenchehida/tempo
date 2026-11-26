@@ -17,6 +17,8 @@ export interface Subtask {
   id: string;
   title: string;
   done: boolean;
+  due?: string | null; // YYYY-MM-DD
+  estimate?: number; // minutes, 0 = none
 }
 
 export interface Task {
@@ -33,12 +35,14 @@ export interface Task {
   order: number;
   createdAt: number;
   completedAt: number | null;
+  plannedWeek?: string | null; // Monday (YYYY-MM-DD) of the week it first went into "This week"
   sample?: boolean;
 }
 
 export interface TimeEntry {
   id: string;
   taskId: string;
+  subtaskId?: string | null;
   projectId: string;
   start: number; // ms
   end: number | null; // null = running
@@ -61,6 +65,7 @@ export interface TimerState {
   mode: TimerMode;
   phase: 'idle' | 'work' | 'paused' | 'break';
   taskId: string | null; // current or last task (for resume)
+  subtaskId: string | null;
   pomoWorked: number; // ms worked in the current focus block before the open entry
   pomoDone: number; // completed focus blocks in this cycle
   breakStart: number | null;

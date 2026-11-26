@@ -1,0 +1,91 @@
+name: Build Tempo (Mac + Windows)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build
+  cancel-in-progress: true
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install Rust (Apple Silicon + Intel)
+        run: |
+          rustup update stable
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - name: Build Tempo.app and Tempo.dmg (universal)
+        run: npx tauri build --target universal-apple-darwin --bundles app,dmg
+      - name: Collect the files
+        run: |
+          mkdir -p out
+          cp src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg out/Tempo.dmg
+          cd src-tauri/target/universal-apple-darwin/release/bundle/macos
+          ditto -c -k --keepParent Tempo.app "$GITHUB_WORKSPACE/out/Tempo-mac.app.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: out/*
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install Rust
+        run: rustup update stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - name: Build the Windows installer
+        run: npx tauri build --bundles nsis
+      - name: Collect the files
+        shell: bash
+        run: |
+          mkdir -p out
+          cp src-tauri/target/release/bundle/nsis/*-setup.exe out/Tempo-Windows-setup.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: out/*
+
+  release:
+    needs: [mac, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Publish as the "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -la out
+          gh release delete latest --cleanup-tag --yes || true
+          gh release create latest out/* \
+            --target "$GITHUB_SHA" \
+            --title "Tempo — latest build" \
+            --notes "Built from ${GITHUB_SHA::7} on $(date -u '+%d %b %Y %H:%M UTC').
+
+          **Mac:** download **Tempo.dmg**. **Windows:** download **Tempo-Windows-setup.exe**. First launch on either: see the README."

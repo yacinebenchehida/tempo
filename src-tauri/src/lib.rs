@@ -100,7 +100,7 @@ fn export_file(app: AppHandle, name: String, contents: String) -> Result<String,
 
 // ---------- idle detection ----------
 
-/// Seconds since the last keyboard or mouse input (macOS). 0 elsewhere.
+/// Seconds since the last keyboard or mouse input (macOS and Windows). 0 elsewhere.
 #[tauri::command]
 fn idle_seconds() -> u64 {
     #[cfg(target_os = "macos")]
@@ -122,7 +122,20 @@ fn idle_seconds() -> u64 {
         }
         0
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::System::SystemInformation::GetTickCount;
+        use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
+        let mut info = LASTINPUTINFO { cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };
+        // SAFETY: plain Win32 calls with a correctly sized struct.
+        unsafe {
+            if GetLastInputInfo(&mut info) != 0 {
+                return (GetTickCount().wrapping_sub(info.dwTime) / 1000) as u64;
+            }
+        }
+        0
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         0
     }
@@ -144,7 +157,10 @@ fn dot_icon(color: Option<&str>) -> Image<'static> {
     let size: u32 = 36;
     let mut buf = vec![0u8; (size * size * 4) as usize];
     let rgb = color.and_then(parse_hex);
-    let (r, g, b) = rgb.unwrap_or((0, 0, 0));
+    // macOS tints the outline ring itself (template icon); elsewhere use a mid grey
+    // that shows on both light and dark taskbars.
+    let idle_rgb = if cfg!(target_os = "macos") { (0, 0, 0) } else { (138, 144, 156) };
+    let (r, g, b) = rgb.unwrap_or(idle_rgb);
     let filled = rgb.is_some();
     let c = size as f32 / 2.0;
     let rad = 11.0_f32;
@@ -191,7 +207,9 @@ fn set_tray(
             let _ = tray.set_icon_as_template(color.is_none());
             *last = key;
         }
-        let _ = tray.set_tooltip(Some(task.as_str()));
+        // Windows has no text next to tray icons, so the tooltip carries the time too.
+        let tip = if title.is_empty() { task.clone() } else { format!("{title} · {task}") };
+        let _ = tray.set_tooltip(Some(tip.as_str()));
     }
     if let Some(i) = state.task.lock().unwrap().as_ref() {
         let _ = i.set_text(&task);

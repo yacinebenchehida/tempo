@@ -17,6 +17,22 @@
     return !!p && !p.archived && (ui.filter === 'all' || ui.filter === pid);
   };
 
+  // Tasks and subtasks due on a day, as one list.
+  type DueItem = { id: string; taskId: string; subId: string | null; projectId: string; title: string; parent: string | null; column: string; priority: number };
+  const dueIndex = $derived.by(() => {
+    const m = new Map<string, DueItem[]>();
+    const add = (k: string, it: DueItem) => (m.get(k) ?? m.set(k, []).get(k)!).push(it);
+    for (const tk of db.tasks) {
+      if (!visible(tk.projectId)) continue;
+      if (tk.due) add(tk.due, { id: tk.id, taskId: tk.id, subId: null, projectId: tk.projectId, title: tk.title, parent: null, column: tk.column, priority: tk.priority });
+      for (const sb of tk.subtasks) {
+        if (sb.due) add(sb.due, { id: tk.id + ':' + sb.id, taskId: tk.id, subId: sb.id, projectId: tk.projectId, title: sb.title, parent: tk.title, column: sb.done || tk.column === 'done' ? 'done' : tk.column, priority: tk.priority });
+      }
+    }
+    for (const list of m.values()) list.sort((a, b) => Number(a.column === 'done') - Number(b.column === 'done') || a.priority - b.priority);
+    return m;
+  });
+
   const days = $derived.by(() => {
     const first = startOfWeek(month);
     const out = [];
@@ -32,9 +48,7 @@
         if (ms) per.set(e.projectId, (per.get(e.projectId) ?? 0) + ms);
       }
       const total = [...per.values()].reduce((a, b) => a + b, 0);
-      const chips = db.tasks
-        .filter((t) => t.due === key && visible(t.projectId))
-        .sort((a, b) => Number(a.column === 'done') - Number(b.column === 'done') || a.priority - b.priority);
+      const chips = dueIndex.get(key) ?? [];
       out.push({ d, key, inMonth: d.getMonth() === month.getMonth(), total, per, chips });
     }
     // Drop a trailing week that belongs entirely to the next month.
@@ -46,7 +60,7 @@
     const d = new Date(selected + 'T00:00:00');
     const from = d.getTime();
     const to = from + DAY;
-    const due = db.tasks.filter((t) => t.due === selected && visible(t.projectId));
+    const due = dueIndex.get(selected) ?? [];
     const log = db.entries
       .filter((e) => visible(e.projectId) && overlap(e.start, e.end ?? clock.now, from, to) > 0)
       .sort((a, b) => a.start - b.start);
@@ -58,8 +72,12 @@
   let dragTask = $state<string | null>(null);
   let overDay = $state<string | null>(null);
   function dropOn(key: string) {
-    const t = db.tasks.find((x) => x.id === dragTask);
-    if (t) t.due = key;
+    const [taskId, subId] = (dragTask ?? '').split(':');
+    const tk = db.tasks.find((x) => x.id === taskId);
+    if (tk && subId) {
+      const sb = tk.subtasks.find((x) => x.id === subId);
+      if (sb) sb.due = key;
+    } else if (tk) tk.due = key;
     dragTask = null;
     overDay = null;
   }
@@ -131,11 +149,11 @@
                   draggable="true"
                   ondragstart={(e) => { dragTask = task.id; e.dataTransfer?.setData('text/plain', task.id); }}
                   ondragend={() => { dragTask = null; overDay = null; }}
-                  ondblclick={(e) => { e.stopPropagation(); ui.openTaskId = task.id; }}
+                  ondblclick={(e) => { e.stopPropagation(); ui.openTaskId = task.taskId; }}
                   title={t('{title} · drag to change the due date, double-click to open', { title: task.title })}
                   role="note"
                 >
-                  <span class="cd" style:background={p?.color}></span><span class="ct">{task.title}</span>
+                  <span class="cd" style:background={p?.color}></span><span class="ct">{task.subId ? '› ' : ''}{task.title}</span>
                 </span>
               {/each}
               {#if day.chips.length > 3}<span class="more">{t('+{n} more', { n: day.chips.length - 3 })}</span>{/if}
@@ -176,9 +194,9 @@
       {#if !sel.due.length && !adding}<span class="muted small">{t('Nothing due.')}</span>{/if}
       {#each sel.due as task (task.id)}
         {@const p = projectById(task.projectId)}
-        <button class="due" style:background={tint(p?.color ?? '#8A909C', 0.12)} onclick={() => (ui.openTaskId = task.id)}>
+        <button class="due" style:background={tint(p?.color ?? '#8A909C', 0.12)} onclick={() => (ui.openTaskId = task.taskId)}>
           {#if p}<Mascot kind={p.mascot} color={p.color} size={18} />{/if}
-          <span class="dt" class:done={task.column === 'done'}>{task.title}</span>
+          <span class="dt" class:done={task.column === 'done'}>{task.title}{#if task.parent}<span class="parent">{task.parent}</span>{/if}</span>
           <span class="small muted">{p?.name}</span>
         </button>
       {/each}
@@ -193,7 +211,7 @@
         <div class="entry">
           <span class="es" style:background={p?.color}></span>
           <div class="ei">
-            <span class="et">{task?.title ?? t('Deleted task')}</span>
+            <span class="et">{task?.title ?? t('Deleted task')}{#if e.subtaskId && task}<span class="muted">{' › '}{task.subtasks.find((x) => x.id === e.subtaskId)?.title ?? ''}</span>{/if}</span>
             <span class="muted small num">{fmtTime(e.start)} – {e.end ? fmtTime(e.end) : t('now')} · {p?.name}</span>
           </div>
           <span class="num">{fmtDur((e.end ?? clock.now) - e.start)}</span>
@@ -220,7 +238,7 @@
   .grid-wrap { overflow-x: auto; }
   .wk, .grid { display: grid; grid-template-columns: repeat(7, minmax(92px, 1fr)); gap: 6px; }
   .wk { font-size: 12px; font-weight: 600; color: var(--ink-3); padding: 0 8px 6px; }
-  .day { min-height: 108px; border-radius: 12px; background: var(--surface); padding: 7px; display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer; transition: box-shadow 0.2s, transform 0.25s var(--spring); outline: none; }
+  .day { min-width: 0; min-height: 108px; border-radius: 12px; background: var(--surface); padding: 7px; display: flex; flex-direction: column; gap: 4px; text-align: left; cursor: pointer; transition: box-shadow 0.2s, transform 0.25s var(--spring); outline: none; }
   .day:hover { box-shadow: var(--shadow-lift); transform: translateY(-1px); }
   .day.out { background: #eef0f3; }
   .day.out .n { color: var(--ink-3); }
@@ -246,6 +264,7 @@
   .strong { font-weight: 600; }
   .due { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 0; text-align: left; }
   .dt { flex: 1; font-size: 13px; font-weight: 600; }
+  .parent { display: block; font-size: 11px; font-weight: 500; color: var(--ink-3); }
   .dt.done { text-decoration: line-through; color: var(--ink-3); }
   .entry { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #eef0f3; }
   .es { width: 4px; height: 30px; border-radius: 2px; flex: none; }

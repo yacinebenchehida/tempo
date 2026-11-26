@@ -9,6 +9,8 @@
 
   const defaultEnd = Math.floor(clock.now / 300000) * 300000;
   let taskId = $state(existing?.taskId ?? ed.taskId ?? '');
+  let subId = $state(existing?.subtaskId ?? '');
+  const subs = $derived(db.tasks.find((x) => x.id === taskId)?.subtasks ?? []);
   let day = $state(existing ? dayKey(existing.start) : ed.day || dayKey(clock.now));
   let from = $state(existing ? hhmm(existing.start) : hhmm(defaultEnd - 3600000));
   let to = $state(existing?.end ? hhmm(existing.end) : hhmm(defaultEnd));
@@ -31,10 +33,10 @@
   function save() {
     if (!valid) return;
     if (existing) {
-      updateEntry(existing.id, { taskId, start: startMs, end: endMs });
+      updateEntry(existing.id, { taskId, subtaskId: subs.some((x) => x.id === subId) ? subId : null, start: startMs, end: endMs });
       toast(t('Entry updated'));
     } else {
-      addEntry(taskId, startMs, endMs);
+      addEntry(taskId, startMs, endMs, subs.some((x) => x.id === subId) ? subId : null);
       toast(t('Added {d}', { d: fmtDur(endMs - startMs) }));
     }
     ui.entryEditor = null;
@@ -54,6 +56,14 @@
       {#each tasks as { t: tk, p } (tk.id)}<option value={tk.id}>{p?.name} · {tk.title}</option>{/each}
     </select>
   </label>
+  {#if subs.length}
+    <label class="field"><span>{t('Subtask')}</span>
+      <select class="input" bind:value={subId}>
+        <option value="">{t('The task itself')}</option>
+        {#each subs as sb (sb.id)}<option value={sb.id}>{sb.title}</option>{/each}
+      </select>
+    </label>
+  {/if}
   <div class="row">
     <label class="field"><span>{t('Day')}</span><input class="input" type="date" bind:value={day} /></label>
     <label class="field"><span>{t('From')}</span><input class="input" type="time" bind:value={from} /></label>

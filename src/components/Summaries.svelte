@@ -115,13 +115,13 @@
   }
 
   async function exportCsv() {
-    const rows = [['date', 'start', 'end', 'minutes', 'project', 'task']];
+    const rows = [['date', 'start', 'end', 'minutes', 'project', 'task', 'subtask']];
     for (const e of [...db.entries].filter((x) => x.end).sort((a, b) => a.start - b.start)) {
       const t = db.tasks.find((x) => x.id === e.taskId);
       const p = db.projects.find((x) => x.id === e.projectId);
       const d = new Date(e.start);
       const iso = (ms: number) => new Date(ms - new Date(ms).getTimezoneOffset() * 60000).toISOString().slice(0, 16).replace('T', ' ');
-      rows.push([iso(e.start).slice(0, 10), iso(e.start).slice(11), iso(e.end!).slice(11), String(Math.round((e.end! - e.start) / 60000)), p?.name ?? '', t?.title ?? '']);
+      rows.push([iso(e.start).slice(0, 10), iso(e.start).slice(11), iso(e.end!).slice(11), String(Math.round((e.end! - e.start) / 60000)), p?.name ?? '', t?.title ?? '', t?.subtasks.find((x) => x.id === e.subtaskId)?.title ?? '']);
       void d;
     }
     const csv = rows.map((r) => r.map((c) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(',')).join('\n');

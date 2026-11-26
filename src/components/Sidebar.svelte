@@ -2,7 +2,7 @@
   import { db, ui, clock, activeProjects } from '../lib/store.svelte';
   import { tint } from '../lib/palette';
   import { startOfWeek, overlap, fmtDur } from '../lib/time';
-  import { isApp } from '../lib/native';
+  import { isApp, isMac } from '../lib/native';
   import { timerView } from '../lib/timer.svelte';
   import Icon from './Icon.svelte';
   import Mascot from './Mascot.svelte';
@@ -13,6 +13,7 @@
     { id: 'board', name: 'Board', icon: 'board' },
     { id: 'calendar', name: 'Calendar', icon: 'calendar' },
     { id: 'summaries', name: 'Summaries', icon: 'chart' },
+    { id: 'history', name: 'History', icon: 'history' },
     { id: 'settings', name: 'Settings', icon: 'settings' }
   ] as const;
 
@@ -39,7 +40,7 @@
   }
 </script>
 
-<aside class:app={isApp}>
+<aside class:app={isApp && isMac}>
   <div class="logo">
     <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
       <circle cx="13" cy="13" r="10" fill="none" stroke="var(--line)" stroke-width="3.5" />

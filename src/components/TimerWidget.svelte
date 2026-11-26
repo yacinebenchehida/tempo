@@ -34,7 +34,7 @@
   {#if tv.task}
     <button class="task" onclick={() => (ui.openTaskId = tv.task!.id)}>
       {#if tv.project}<Mascot kind={tv.project.mascot} color={tv.phase === 'break' ? '#8FD3C3' : tv.project.color} size={16} />{/if}
-      <span>{tv.task.title}</span>
+      <span>{tv.task.title}{#if tv.subtask}<span class="subname">{' › '}{tv.subtask.title}</span>{/if}</span>
     </button>
     <span class="total num">{t('Total on this task: {d}', { d: fmtDur(total) })}</span>
   {:else}
@@ -65,6 +65,7 @@
   .clock { font-size: 27px; font-weight: 700; }
   .task { display: flex; align-items: flex-start; gap: 7px; border: 0; background: transparent; padding: 0; text-align: left; font-size: 13px; font-weight: 600; line-height: 1.35; }
   .task span:hover { text-decoration: underline; }
+  .subname { font-weight: 500; opacity: 0.8; }
   .total, .hint { font-size: 12px; color: var(--ink-3); margin-top: -6px; }
   .hint { margin-top: 0; line-height: 1.4; }
   .dark .total { color: #c8d6d1; }

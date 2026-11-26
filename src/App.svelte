@@ -3,13 +3,14 @@
   import { db, ui, clock, init } from './lib/store.svelte';
   import { startClock, timerView } from './lib/timer.svelte';
   import { tint } from './lib/palette';
-  import { isApp } from './lib/native';
+  import { isApp, isMac } from './lib/native';
   import { lang, resolveLang } from './lib/i18n.svelte';
   import Sidebar from './components/Sidebar.svelte';
   import Board from './components/Board.svelte';
   import Calendar from './components/Calendar.svelte';
   import Summaries from './components/Summaries.svelte';
   import Settings from './components/Settings.svelte';
+  import History from './components/History.svelte';
   import TaskDrawer from './components/TaskDrawer.svelte';
   import ProjectEditor from './components/ProjectEditor.svelte';
   import EntryEditor from './components/EntryEditor.svelte';
@@ -41,14 +42,15 @@
 <svelte:window onkeydown={onKey} />
 
 {#if ui.loaded}
-  <div class="shell" class:app={isApp}>
-    {#if isApp}<div class="drag" data-tauri-drag-region></div>{/if}
+  <div class="shell" class:app={isApp && isMac}>
+    {#if isApp && isMac}<div class="drag" data-tauri-drag-region></div>{/if}
     <Sidebar />
     <main style:background={wash}>
       {#if ui.saveError}<div class="save-error">{ui.saveError}</div>{/if}
       {#if ui.view === 'board'}<Board />
       {:else if ui.view === 'calendar'}<Calendar />
       {:else if ui.view === 'summaries'}<Summaries />
+      {:else if ui.view === 'history'}<History />
       {:else}<Settings />{/if}
     </main>
   </div>

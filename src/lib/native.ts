@@ -4,6 +4,7 @@
 import { t } from './i18n.svelte';
 
 export const isApp = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+export const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform || navigator.userAgent);
 
 async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   const { invoke } = await import('@tauri-apps/api/core');

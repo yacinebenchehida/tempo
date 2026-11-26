@@ -1,13 +1,14 @@
 <script lang="ts">
   import { fly, fade } from 'svelte/transition';
-  import { db, ui, clock, taskById, projectById, activeProjects, updateTask, deleteTask, taskTime, deleteEntry } from '../lib/store.svelte';
+  import { db, ui, clock, taskById, projectById, activeProjects, updateTask, deleteTask, taskTime, deleteEntry, carriedWeeks } from '../lib/store.svelte';
   import { toggle } from '../lib/timer.svelte';
   import { COLUMNS, type Level } from '../lib/types';
-  import { fmtDur, fmtTime, fmtDayShort, uid } from '../lib/time';
+  import { fmtDur, fmtTime, fmtDayShort, fmtDayLong, parseDay, uid } from '../lib/time';
+  import SubtaskRow from './SubtaskRow.svelte';
   import { tint } from '../lib/palette';
   import Icon from './Icon.svelte';
   import Mascot from './Mascot.svelte';
-  import { t } from '../lib/i18n.svelte';
+  import { t, tp } from '../lib/i18n.svelte';
 
   const task = $derived(taskById(ui.openTaskId));
   const project = $derived(task ? projectById(task.projectId) : null);
@@ -15,6 +16,8 @@
   const spent = $derived(task ? taskTime(task.id, clock.now) : 0);
   const entries = $derived(task ? db.entries.filter((e) => e.taskId === task.id).sort((a, b) => b.start - a.start) : []);
   const isRunning = $derived(task && db.timer.taskId === task.id && db.timer.phase === 'work');
+  const carried = $derived(task ? carriedWeeks(task, clock.now) : 0);
+  const subName = (id: string | null | undefined) => (id && task ? task.subtasks.find((s) => s.id === id)?.title : null);
 
   let newSub = $state('');
   let confirmDelete = $state(false);
@@ -33,7 +36,7 @@
   }
   function addSub() {
     if (!task || !newSub.trim()) return;
-    task.subtasks.push({ id: uid(), title: newSub.trim(), done: false });
+    task.subtasks.push({ id: uid(), title: newSub.trim(), done: false, due: null, estimate: 0 });
     newSub = '';
   }
   function focusIfEmpty(el: HTMLInputElement) {
@@ -43,7 +46,7 @@
 
 {#if task}
   <div class="scrim" transition:fade={{ duration: 150 }} onclick={close} role="presentation"></div>
-  <aside class="drawer" transition:fly={{ x: 420, duration: 260, opacity: 1 }} aria-label={t('Task details')} style:--c={project?.color ?? '#8A909C'}>
+  <aside class="drawer" transition:fly={{ x: 420, duration: 260, opacity: 1 }} aria-label={t('Task details')} style:--c={project?.color ?? '#8A909C'} style:--c-soft={tint(project?.color ?? '#8A909C', 0.1)}>
     <div class="top">
       <span class="badge" style:background={project ? tint(project.color, 0.14) : 'var(--sunken)'}>
         {#if project}<Mascot kind={project.mascot} color={project.color} size={22} />{/if}
@@ -58,11 +61,18 @@
     <input class="title display" placeholder={t('Task name')} bind:value={task.title} use:focusIfEmpty aria-label={t('Task name')} />
 
     <div class="timer-row">
-      <button class="btn primary" onclick={() => toggle(task.id)}><Icon name={isRunning ? 'pause' : 'play'} size={13} />{t(isRunning ? 'Pause timer' : 'Start timer')}</button>
+      <button class="btn primary" onclick={() => toggle(task.id, isRunning ? undefined : null)}><Icon name={isRunning ? 'pause' : 'play'} size={13} />{t(isRunning ? 'Pause timer' : 'Start timer')}</button>
       <div class="spent"><span class="num display">{fmtDur(spent)}</span><span class="muted">{task.estimate ? t('of {d} estimated', { d: fmtDur(task.estimate * 60000) }) : t('tracked')}</span></div>
     </div>
     {#if task.estimate}
       <div class="est-bar"><span style:width="{Math.min(100, (spent / (task.estimate * 60000)) * 100)}%" class:over={spent > task.estimate * 60000}></span></div>
+    {/if}
+
+    {#if task.plannedWeek && task.column !== 'todo'}
+      <div class="planned" class:late={carried > 0}>
+        <Icon name="calendar" size={14} />
+        <span>{t('Planned for the week of {d}', { d: fmtDayLong(parseDay(task.plannedWeek)).replace(/^\S+ /, '') })}{carried ? ' · ' + tp(carried, '{n} week over', '{n} weeks over') : ''}</span>
+      </div>
     {/if}
 
     <div class="grid">
@@ -108,11 +118,7 @@
       <div class="sec-head"><span class="eyebrow">{t('Subtasks')}</span>{#if task.subtasks.length}<span class="muted small">{t('{a} of {b}', { a: task.subtasks.filter((s) => s.done).length, b: task.subtasks.length })}</span>{/if}</div>
       <ul class="subs">
         {#each task.subtasks as s (s.id)}
-          <li>
-            <button class="check" class:on={s.done} onclick={() => (s.done = !s.done)} aria-label={t(s.done ? 'Mark not done' : 'Mark done')}>{#if s.done}<Icon name="check" size={12} stroke={3} />{/if}</button>
-            <input class="sub-input" class:done={s.done} bind:value={s.title} aria-label={t('Subtask')} />
-            <button class="icon-btn del" aria-label={t('Delete subtask')} onclick={() => (task.subtasks = task.subtasks.filter((x) => x.id !== s.id))}><Icon name="x" size={13} /></button>
-          </li>
+          <SubtaskRow {task} sub={s} />
         {/each}
       </ul>
       <input class="input" placeholder={t('Add a subtask, then Enter')} bind:value={newSub} onkeydown={(e) => e.key === 'Enter' && addSub()} />
@@ -131,7 +137,7 @@
       {#each entries.slice(0, 30) as e (e.id)}
         <div class="entry">
           <span class="muted small day">{fmtDayShort(e.start)}</span>
-          <span class="num small">{fmtTime(e.start)} – {e.end ? fmtTime(e.end) : t('now')}</span>
+          <span class="num small">{fmtTime(e.start)} – {e.end ? fmtTime(e.end) : t('now')}{#if subName(e.subtaskId)}<span class="muted">{' · '}{subName(e.subtaskId)}</span>{/if}</span>
           <span class="num strong">{fmtDur((e.end ?? clock.now) - e.start)}</span>
           {#if e.end}
             <button class="icon-btn" aria-label={t('Edit entry')} onclick={() => (ui.entryEditor = { id: e.id, taskId: task.id, day: '' })}><Icon name="edit" size={14} /></button>
@@ -185,14 +191,9 @@
   .sec-head { display: flex; align-items: center; justify-content: space-between; }
   .small { font-size: 12px; }
   .subs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-  .subs li { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
-  .check { width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--line-strong); background: var(--surface); display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 0; }
-  .check.on { background: var(--c); border-color: var(--c); color: #fff; }
-  .sub-input { flex: 1; border: 0; outline: none; background: transparent; font-size: 14px; padding: 4px 0; }
-  .sub-input.done { text-decoration: line-through; color: var(--ink-3); }
-  .del { opacity: 0; width: 26px; height: 26px; }
-  .subs li:hover .del { opacity: 1; }
   .entry { display: grid; grid-template-columns: 90px 1fr auto auto auto; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid #eef0f3; }
   .strong { font-weight: 600; font-size: 13px; }
+  .planned { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); margin-top: -6px; }
+  .planned.late { color: #b42318; font-weight: 600; }
   .danger-zone { margin-top: auto; padding-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 </style>

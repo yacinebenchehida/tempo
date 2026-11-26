@@ -1,6 +1,6 @@
 import { db } from './store.svelte';
 import type { Column, Level, Project, Task, TimeEntry } from './types';
-import { addDays, dayKey, startOfDay, uid, MIN, HOUR } from './time';
+import { addDays, dayKey, startOfDay, startOfWeek, uid, MIN, HOUR } from './time';
 import { t } from './i18n.svelte';
 
 /** A few weeks of made-up history so every screen has something to show. */
@@ -51,13 +51,21 @@ export function loadSample() {
     difficulty,
     estimate,
     due: due === null ? null : d(due),
-    subtasks: Array.from({ length: nSub }, (_, k) => ({ id: uid(), title: t('Step {n}', { n: k + 1 }), done: k < nDone })),
+    subtasks: Array.from({ length: nSub }, (_, k) => ({ id: uid(), title: t('Step {n}', { n: k + 1 }), done: k < nDone, due: null as string | null, estimate: 0 })),
+    plannedWeek: column === 'week' || column === 'doing' ? dayKey(startOfWeek(now)) : null,
     notes: '',
     order: i,
     createdAt: now - 40 * 24 * HOUR,
     completedAt: column === 'done' ? addDays(today, (due ?? 0)).getTime() + 17 * HOUR : null,
     sample: true
   }));
+
+  // Show off a few features: tasks carried over from earlier weeks, a subtask with a due date.
+  tasks[0].plannedWeek = dayKey(startOfWeek(addDays(today, -14)));
+  tasks[1].plannedWeek = dayKey(startOfWeek(addDays(today, -7)));
+  tasks[0].subtasks[4].due = d(3);
+  tasks[0].subtasks[4].estimate = 90;
+  tasks[0].subtasks[5].due = d(6);
 
   const budget = new Map(tasks.map((t) => [t.id, t.estimate * MIN * (t.column === 'done' ? 0.75 + rnd() * 0.6 : 0.3 + rnd() * 0.4)]));
   const entries: TimeEntry[] = [];
@@ -78,7 +86,9 @@ export function loadSample() {
       budget.set(task.id, budget.get(task.id)! - len);
       const end = Math.min(t + len, back === 0 ? now - 2 * MIN : Infinity);
       if (end <= t) break;
-      entries.push({ id: uid(), taskId: task.id, projectId: task.projectId, start: t, end, kind: 'stopwatch', sample: true });
+      const open = task.subtasks.filter((x) => !x.done);
+      const sub = open.length && rnd() > 0.5 ? open[Math.floor(rnd() * open.length)].id : null;
+      entries.push({ id: uid(), taskId: task.id, subtaskId: sub, projectId: task.projectId, start: t, end, kind: 'stopwatch', sample: true });
       t = end + (b === 1 ? 55 : 10 + Math.round(rnd() * 20)) * MIN;
       if (b === 1 && t < day.getTime() + 12 * HOUR) t = day.getTime() + 13 * HOUR + 30 * MIN;
     }

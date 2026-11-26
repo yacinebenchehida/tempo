@@ -1,4 +1,4 @@
-import { db, ui, clock, taskById, projectById, toast } from './store.svelte';
+import { db, ui, clock, taskById, projectById, toast, planIfNeeded } from './store.svelte';
 import type { TimerMode } from './types';
 import { MIN, dayKey, addDays, fmtClock, startOfDay, uid } from './time';
 import { setTray, onTray, idleSeconds, notify, warmUpNotifications } from './native';
@@ -12,6 +12,7 @@ export function timerView(now: number) {
   const entry = running();
   const task = taskById(t.taskId);
   const project = task ? projectById(task.projectId) : null;
+  const subtask = task && t.subtaskId ? task.subtasks.find((s) => s.id === t.subtaskId) ?? null : null;
   const work = db.settings.pomodoroWork * MIN;
   const session = entry ? now - entry.start : 0;
   let display = 0;
@@ -39,6 +40,7 @@ export function timerView(now: number) {
     mode: t.mode,
     entry,
     task,
+    subtask,
     project,
     display,
     progress,
@@ -58,21 +60,25 @@ function closeOpen(now: number) {
   if (e.end - e.start < 5000) db.entries = db.entries.filter((x) => x !== e);
 }
 
-export function start(taskId: string) {
+export function start(taskId: string, subtaskId: string | null = null) {
   const now = Date.now();
   const task = taskById(taskId);
   if (!task) return;
   const t = db.timer;
   const cur = running();
-  if (cur && cur.taskId === taskId) return;
+  if (cur && cur.taskId === taskId && (cur.subtaskId ?? null) === subtaskId) return;
   if (cur && t.mode === 'pomodoro') t.pomoWorked += now - cur.start;
   closeOpen(now);
   if (t.phase === 'break' || t.phase === 'idle') t.pomoWorked = 0;
-  db.entries.push({ id: uid(), taskId, projectId: task.projectId, start: now, end: null, kind: t.mode });
+  db.entries.push({ id: uid(), taskId, subtaskId, projectId: task.projectId, start: now, end: null, kind: t.mode });
   t.taskId = taskId;
+  t.subtaskId = subtaskId;
   t.phase = 'work';
   t.breakStart = null;
-  if (task.column === 'todo' || task.column === 'week') task.column = 'doing';
+  if (task.column === 'todo' || task.column === 'week') {
+    task.column = 'doing';
+    planIfNeeded(task);
+  }
   warmUpNotifications();
 }
 
@@ -85,11 +91,14 @@ export function pause() {
 }
 
 export function resume() {
-  if (db.timer.taskId) start(db.timer.taskId);
+  if (db.timer.taskId) start(db.timer.taskId, db.timer.subtaskId);
 }
 
-export function toggle(taskId?: string) {
-  if (taskId && taskId !== db.timer.taskId) return start(taskId);
+/** Pause or resume the current timer; with a task (and optionally a subtask) that is not
+ *  the current one, switch to it. `subtaskId` undefined means "the task, whatever subtask". */
+export function toggle(taskId?: string, subtaskId?: string | null) {
+  const same = taskId === undefined || (taskId === db.timer.taskId && (subtaskId === undefined || subtaskId === db.timer.subtaskId));
+  if (!same) return start(taskId!, subtaskId ?? null);
   if (db.timer.phase === 'work') pause();
   else if (db.timer.taskId) resume();
 }
@@ -109,6 +118,7 @@ export function setMode(mode: TimerMode) {
   if (db.timer.mode === mode) return;
   const wasRunning = db.timer.phase === 'work';
   const taskId = db.timer.taskId;
+  const subId = db.timer.subtaskId;
   if (wasRunning) closeOpen(Date.now());
   if (db.timer.phase === 'break') db.timer.phase = taskId ? 'paused' : 'idle';
   db.timer.mode = mode;
@@ -116,7 +126,7 @@ export function setMode(mode: TimerMode) {
   db.timer.pomoDone = 0;
   if (wasRunning && taskId) {
     db.timer.phase = 'idle';
-    start(taskId);
+    start(taskId, subId);
   }
 }
 
@@ -181,7 +191,7 @@ export function resolveIdle(choice: 'keep' | 'remove' | 'stop') {
     cur.end = p.since;
   }
   if (choice === 'remove') {
-    db.entries.push({ id: uid(), taskId, projectId: cur.projectId, start: p.until, end: null, kind: cur.kind });
+    db.entries.push({ id: uid(), taskId, subtaskId: cur.subtaskId ?? null, projectId: cur.projectId, start: p.until, end: null, kind: cur.kind });
   } else {
     Object.assign(db.timer, { phase: 'paused', pomoWorked: 0 });
   }
@@ -194,7 +204,10 @@ function checkDue(now: number) {
   if (db.meta.lastDueReminder === today || new Date(now).getHours() < 9) return;
   db.meta.lastDueReminder = today;
   const tomorrow = dayKey(addDays(startOfDay(now), 1));
-  const open = db.tasks.filter((t) => t.column !== 'done' && t.due);
+  // Tasks and open subtasks with a due date, as one list.
+  const open = db.tasks
+    .filter((t) => t.column !== 'done')
+    .flatMap((t) => [...(t.due ? [{ due: t.due, title: t.title }] : []), ...t.subtasks.filter((s) => !s.done && s.due).map((s) => ({ due: s.due!, title: `${t.title} › ${s.title}` }))]);
   const dueTomorrow = open.filter((t) => t.due === tomorrow);
   const overdue = open.filter((t) => t.due! < today);
   const dueToday = open.filter((t) => t.due === today);
@@ -216,7 +229,7 @@ function syncTray(now: number) {
   setTray({
     title,
     color: v.phase === 'work' && v.project ? v.project.color : null,
-    task: v.task ? `${v.project?.name ?? ''} · ${v.task.title}` : tr('No timer running'),
+    task: v.task ? `${v.project?.name ?? ''} · ${v.task.title}${v.subtask ? ' › ' + v.subtask.title : ''}` : tr('No timer running'),
     toggle: tr(v.phase === 'work' ? 'Pause' : v.task ? 'Resume' : 'Start'),
     stop: tr('Stop & save'),
     open: tr('Open Tempo'),

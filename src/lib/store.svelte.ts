@@ -1,6 +1,6 @@
 import type { Column, Data, Level, Project, Task, TimeEntry } from './types';
 import { PALETTE, MASCOT_KEYS } from './palette';
-import { uid } from './time';
+import { uid, dayKey, startOfWeek, parseDay, DAY } from './time';
 import { loadData, saveData } from './native';
 import { t as tr } from './i18n.svelte';
 
@@ -20,14 +20,14 @@ export function emptyData(): Data {
       language: 'auto',
       hideDoneAfterDays: 14
     },
-    timer: { mode: 'stopwatch', phase: 'idle', taskId: null, pomoWorked: 0, pomoDone: 0, breakStart: null, breakLength: 5 },
+    timer: { mode: 'stopwatch', phase: 'idle', taskId: null, subtaskId: null, pomoWorked: 0, pomoDone: 0, breakStart: null, breakLength: 5 },
     meta: { lastDueReminder: null }
   };
 }
 
 export const db: Data = $state(emptyData());
 
-export type View = 'board' | 'calendar' | 'summaries' | 'settings';
+export type View = 'board' | 'calendar' | 'summaries' | 'history' | 'settings';
 
 export const ui = $state({
   loaded: false,
@@ -48,13 +48,37 @@ export const clock = $state({ now: Date.now() });
 
 function migrate(raw: any): Data {
   const base = emptyData();
-  return {
+  const data: Data = {
     ...base,
     ...raw,
     settings: { ...base.settings, ...(raw.settings ?? {}) },
     timer: { ...base.timer, ...(raw.timer ?? {}) },
     meta: { ...base.meta, ...(raw.meta ?? {}) }
   };
+  // Tasks from before "planned week" existed count as planned this week.
+  const monday = thisMonday();
+  for (const t of data.tasks) {
+    if (t.plannedWeek === undefined) t.plannedWeek = t.column === 'week' || t.column === 'doing' ? monday : null;
+    for (const s of t.subtasks) {
+      s.due ??= null;
+      s.estimate ??= 0;
+    }
+  }
+  return data;
+}
+
+export const thisMonday = (now = Date.now()) => dayKey(startOfWeek(now));
+
+/** Mark a task as planned for the current week, the first time it is. */
+export function planIfNeeded(t: Task) {
+  if (!t.plannedWeek && (t.column === 'week' || t.column === 'doing')) t.plannedWeek = thisMonday();
+}
+
+/** Whole weeks a task has stayed unfinished since the week it was planned for. */
+export function carriedWeeks(t: Task, now: number): number {
+  if (!t.plannedWeek || t.column === 'done' || t.column === 'todo') return 0;
+  const diff = startOfWeek(now).getTime() - parseDay(t.plannedWeek).getTime();
+  return Math.max(0, Math.round(diff / (7 * DAY)));
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -140,6 +164,7 @@ export function deleteProject(id: string) {
   if (db.timer.taskId && taskIds.has(db.timer.taskId)) {
     db.timer.phase = 'idle';
     db.timer.taskId = null;
+    db.timer.subtaskId = null;
   }
   db.entries = db.entries.filter((e) => e.projectId !== id);
   db.tasks = db.tasks.filter((t) => t.projectId !== id);
@@ -166,6 +191,7 @@ export function createTask(projectId: string, column: Column, title: string, ext
     completedAt: column === 'done' ? Date.now() : null,
     ...extra
   };
+  planIfNeeded(t);
   db.tasks.push(t);
   return t;
 }
@@ -186,6 +212,8 @@ export function updateTask(id: string, fields: Partial<Task>) {
 function setColumn(t: Task, column: Column) {
   t.column = column;
   t.completedAt = column === 'done' ? Date.now() : null;
+  if (column === 'todo') t.plannedWeek = null;
+  planIfNeeded(t);
 }
 
 /** Move a task to a column, placing it before `beforeId` (or at the end). */
@@ -205,11 +233,18 @@ export function deleteTask(id: string) {
   if (db.timer.taskId === id) {
     db.timer.phase = 'idle';
     db.timer.taskId = null;
+    db.timer.subtaskId = null;
   }
   if (ui.openTaskId === id) ui.openTaskId = null;
 }
 
 // ---------- time entries ----------
+
+export function subtaskTime(taskId: string, subtaskId: string, now: number): number {
+  let ms = 0;
+  for (const e of db.entries) if (e.taskId === taskId && e.subtaskId === subtaskId) ms += (e.end ?? now) - e.start;
+  return ms;
+}
 
 export function taskTime(taskId: string, now: number): number {
   let ms = 0;
@@ -217,10 +252,10 @@ export function taskTime(taskId: string, now: number): number {
   return ms;
 }
 
-export function addEntry(taskId: string, start: number, end: number): TimeEntry | null {
+export function addEntry(taskId: string, start: number, end: number, subtaskId: string | null = null): TimeEntry | null {
   const t = taskById(taskId);
   if (!t || end <= start) return null;
-  const e: TimeEntry = { id: uid(), taskId, projectId: t.projectId, start, end, kind: 'manual' };
+  const e: TimeEntry = { id: uid(), taskId, subtaskId, projectId: t.projectId, start, end, kind: 'manual' };
   db.entries.push(e);
   return e;
 }
@@ -233,6 +268,13 @@ export function updateEntry(id: string, fields: Partial<TimeEntry>) {
     const t = taskById(fields.taskId);
     if (t) e.projectId = t.projectId;
   }
+}
+
+export function deleteSubtask(task: Task, subtaskId: string) {
+  task.subtasks = task.subtasks.filter((x) => x.id !== subtaskId);
+  // Its time stays with the task.
+  for (const e of db.entries) if (e.subtaskId === subtaskId) e.subtaskId = null;
+  if (db.timer.subtaskId === subtaskId) db.timer.subtaskId = null;
 }
 
 export function deleteEntry(id: string) {

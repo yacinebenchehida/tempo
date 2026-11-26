@@ -1,17 +1,19 @@
 # Tempo
 
-A small, pretty Mac app to organise tasks and track the time you spend on them.
+A small, pretty app for Mac and Windows to organise tasks and track the time you spend on them.
 
-- **Board**: projects → tasks → subtasks, in four columns (To do, This week, In progress, Done). Drag cards between columns. Each task has a priority (P1–P3), a difficulty (●○○ to ●●●), a due date, a time estimate and notes.
+- **Board**: projects → tasks → subtasks (each subtask can have its own timer, due date and estimate), in four columns (To do, This week, In progress, Done). Drag cards between columns. Each task has a priority (P1–P3), a difficulty (●○○ to ●●●), a due date, a time estimate and notes.
 - **Timers**: one click on ▶ starts timing a task. Stopwatch or Pomodoro (25 / 5 / 15 minutes, adjustable). Only one task is timed at a time; starting another switches over.
 - **Menu bar**: a dot in the project's colour and the running time sit in the Mac menu bar, with Pause / Stop / Open in its menu. Closing the window keeps the timer running there.
 - **Away detection**: if you leave the Mac while a timer runs, Tempo asks on your return whether to keep or remove that time.
-- **Calendar**: tasks on their due dates (drag to reschedule), the time logged each day, and a day panel where you can add or correct time by hand.
+- **Carried over**: a task planned for an earlier week and still not finished shows how many weeks it has slipped.
+- **History**: every task you've ever had, finished or not, by project, with dates and time against estimate. Searchable, subtasks included.
+- **Calendar**: tasks and subtasks on their due dates (drag to reschedule), the time logged each day, and a day panel where you can add or correct time by hand.
 - **Summaries**: week, month and year views with a doughnut chart per project, stacked hours per day or month, estimated vs actual time, time of day, a project table and a short written review. Export everything as CSV.
 - **Projects**: as many as you like, each with its own colour and animal mascot. Archive old ones to keep their history.
 - **English or French**: follows your Mac's language, or choose in Settings.
 
-## Install
+## Install on a Mac
 
 1. Open the **[latest release](../../releases/tag/latest)** and download **Tempo.dmg**.
 2. Open it and drag **Tempo** into **Applications**.
@@ -26,19 +28,30 @@ A small, pretty Mac app to organise tasks and track the time you spend on them.
 
 To update, download the new Tempo.dmg and replace the app. Your data is kept.
 
+No admin rights? Put the app in the Applications folder inside your home folder instead, then run `xattr -cr ~/Applications/Tempo.app`.
+
+## Install on Windows
+
+1. Open the **[latest release](../../releases/tag/latest)** and download **Tempo-Windows-setup.exe**.
+2. Run it. Windows may show a blue "Windows protected your PC" box because the app isn't signed: click **More info** → **Run anyway**. It installs for your user only, no admin rights needed.
+3. The timer lives in the tray next to the clock (click the **^** arrow if it's hidden; you can drag it out to keep it visible). Hover it to see the running time.
+
+To update, run the new installer. Your data is kept.
+
 ## Your data
 
-Everything stays on your Mac, in one file:
+Everything stays on your computer, in one file:
 
 ```
-~/Library/Application Support/com.tempo.desktop/tempo-data.json
+Mac:      ~/Library/Application Support/com.tempo.desktop/tempo-data.json
+Windows:  %APPDATA%\com.tempo.desktop\tempo-data.json
 ```
 
 A copy is made every day in the `backups` folder next to it (the last 30 days are kept). Settings → *Save a backup copy* writes one to Downloads.
 
 ## Building it yourself
 
-Every push to `main` builds the app on GitHub (see *Actions*) and replaces the `latest` release. To build locally on a Mac you need Node 22 and Rust:
+Every push to `main` builds the Mac and Windows apps on GitHub (see *Actions*) and replaces the `latest` release. To build locally you need Node 22 and Rust:
 
 ```
 npm install
