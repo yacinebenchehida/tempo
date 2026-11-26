@@ -1,6 +1,7 @@
 import { db } from './store.svelte';
 import type { Column, Level, Project, Task, TimeEntry } from './types';
 import { addDays, dayKey, startOfDay, uid, MIN, HOUR } from './time';
+import { t } from './i18n.svelte';
 
 /** A few weeks of made-up history so every screen has something to show. */
 export function loadSample() {
@@ -44,13 +45,13 @@ export function loadSample() {
   const tasks: Task[] = spec.map(([p, title, column, priority, difficulty, estimate, due, nSub, nDone], i) => ({
     id: uid(),
     projectId: p.id,
-    title,
+    title: t(title),
     column,
     priority,
     difficulty,
     estimate,
     due: due === null ? null : d(due),
-    subtasks: Array.from({ length: nSub }, (_, k) => ({ id: uid(), title: `Step ${k + 1}`, done: k < nDone })),
+    subtasks: Array.from({ length: nSub }, (_, k) => ({ id: uid(), title: t('Step {n}', { n: k + 1 }), done: k < nDone })),
     notes: '',
     order: i,
     createdAt: now - 40 * 24 * HOUR,

@@ -18,6 +18,8 @@ struct TrayState {
     task: Mutex<Option<MenuItem<Wry>>>,
     toggle: Mutex<Option<MenuItem<Wry>>>,
     stop: Mutex<Option<MenuItem<Wry>>>,
+    open: Mutex<Option<MenuItem<Wry>>>,
+    quit: Mutex<Option<MenuItem<Wry>>>,
     last_color: Mutex<String>,
 }
 
@@ -175,6 +177,9 @@ fn set_tray(
     color: Option<String>,
     task: String,
     toggle: String,
+    stop: String,
+    open: String,
+    quit: String,
     can_stop: bool,
 ) -> Result<(), String> {
     if let Some(tray) = state.tray.lock().unwrap().as_ref() {
@@ -196,6 +201,13 @@ fn set_tray(
     }
     if let Some(i) = state.stop.lock().unwrap().as_ref() {
         let _ = i.set_enabled(can_stop);
+        let _ = i.set_text(&stop);
+    }
+    if let Some(i) = state.open.lock().unwrap().as_ref() {
+        let _ = i.set_text(&open);
+    }
+    if let Some(i) = state.quit.lock().unwrap().as_ref() {
+        let _ = i.set_text(&quit);
     }
     Ok(())
 }
@@ -242,6 +254,8 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     *st.task.lock().unwrap() = Some(task);
     *st.toggle.lock().unwrap() = Some(toggle);
     *st.stop.lock().unwrap() = Some(stop);
+    *st.open.lock().unwrap() = Some(open);
+    *st.quit.lock().unwrap() = Some(quit);
     Ok(())
 }
 
@@ -254,6 +268,8 @@ pub fn run() {
             task: Mutex::new(None),
             toggle: Mutex::new(None),
             stop: Mutex::new(None),
+            open: Mutex::new(None),
+            quit: Mutex::new(None),
             last_color: Mutex::new("<unset>".into()),
         })
         .setup(|app| {

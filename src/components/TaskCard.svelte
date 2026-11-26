@@ -5,6 +5,7 @@
   import { fmtDur, fmtDue } from '../lib/time';
   import Icon from './Icon.svelte';
   import Mascot from './Mascot.svelte';
+  import { t } from '../lib/i18n.svelte';
 
   let { task, celebrateId = null }: { task: Task; celebrateId?: string | null } = $props();
 
@@ -32,33 +33,33 @@
 </script>
 
 <div class="card-wrap" class:running={isRunning} class:done style:--c={color}>
-  <div class="open" role="button" tabindex="0" onclick={() => (ui.openTaskId = task.id)} onkeydown={(e) => e.key === 'Enter' && (ui.openTaskId = task.id)} aria-label="Open {task.title}"></div>
+  <div class="open" role="button" tabindex="0" onclick={() => (ui.openTaskId = task.id)} onkeydown={(e) => e.key === 'Enter' && (ui.openTaskId = task.id)} aria-label={t('Open {title}', { title: task.title })}></div>
   <span class="stripe"></span>
   <div class="body">
     <div class="meta">
       {#if project}<Mascot kind={project.mascot} color={color} size={16} /><span class="proj">{project.name}</span>{/if}
-      <span class="prio" title="Priority {task.priority}">
+      <span class="prio" title={t('Priority {n}', { n: task.priority })}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill={task.priority === 1 ? 'var(--ink)' : task.priority === 2 ? '#AEB4BE' : 'none'} stroke="var(--ink)" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h12l-2.5 4.5L17 13H5" /></svg>P{task.priority}
       </span>
     </div>
     <div class="title">{task.title}</div>
     <div class="facts">
-      <span class="dots" title="Difficulty {task.difficulty} of 3" aria-label="Difficulty {task.difficulty} of 3">
+      <span class="dots" title={t('Difficulty {d} of 3', { d: task.difficulty })} aria-label={t('Difficulty {d} of 3', { d: task.difficulty })}>
         {#each [1, 2, 3] as i}<span class:on={i <= task.difficulty}></span>{/each}
       </span>
       {#if task.subtasks.length}
         <span class="sub"><span class="bar"><span style:width="{(subDone / task.subtasks.length) * 100}%"></span></span>{subDone}/{task.subtasks.length}</span>
       {/if}
-      {#if due && !done}<span class="due" class:overdue={due.overdue} class:soon={due.soon}>{due.overdue ? 'Overdue · ' : ''}{due.text}</span>{/if}
+      {#if due && !done}<span class="due" class:overdue={due.overdue} class:soon={due.soon}>{due.overdue ? t('Overdue · ') : ''}{due.text}</span>{/if}
     </div>
     <div class="foot">
-      <span class="num spent" class:strong={isRunning}>{spent ? fmtDur(spent) : '0m'}</span>
+      <span class="num spent" class:strong={isRunning}>{fmtDur(spent)}</span>
       {#if task.estimate}<span class="est num" class:over>/ {fmtDur(task.estimate * 60000)}</span>{/if}
       {#if done}
         <span class="tick pop"><Icon name="check" size={13} stroke={3} /></span>
       {:else}
-        <button class="icon-btn act" onclick={finish} aria-label="Mark done" title="Mark done"><Icon name="check" size={16} stroke={2.2} /></button>
-        <button class="playbtn" class:on={isCurrent} onclick={play} aria-label={isRunning ? 'Pause timer' : 'Start timer'} title={isRunning ? 'Pause' : 'Start timer'}>
+        <button class="icon-btn act" onclick={finish} aria-label={t('Mark done')} title={t('Mark done')}><Icon name="check" size={16} stroke={2.2} /></button>
+        <button class="playbtn" class:on={isCurrent} onclick={play} aria-label={t(isRunning ? 'Pause timer' : 'Start timer')} title={t(isRunning ? 'Pause timer' : 'Start timer')}>
           <Icon name={isRunning ? 'pause' : 'play'} size={12} />
         </button>
       {/if}

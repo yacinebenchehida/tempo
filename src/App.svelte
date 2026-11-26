@@ -4,6 +4,7 @@
   import { startClock, timerView } from './lib/timer.svelte';
   import { tint } from './lib/palette';
   import { isApp } from './lib/native';
+  import { lang, resolveLang } from './lib/i18n.svelte';
   import Sidebar from './components/Sidebar.svelte';
   import Board from './components/Board.svelte';
   import Calendar from './components/Calendar.svelte';
@@ -19,6 +20,11 @@
   onMount(async () => {
     await init();
     startClock();
+  });
+
+  $effect(() => {
+    lang.code = resolveLang(db.settings.language);
+    document.documentElement.lang = lang.code;
   });
 
   const tv = $derived(timerView(clock.now));

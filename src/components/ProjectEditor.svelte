@@ -5,6 +5,7 @@
   import { fmtHours } from '../lib/time';
   import Icon from './Icon.svelte';
   import Mascot from './Mascot.svelte';
+  import { t, tp } from '../lib/i18n.svelte';
 
   const isNew = ui.projectEditor === 'new';
   const existing = isNew ? null : projectById(ui.projectEditor);
@@ -48,33 +49,33 @@
 </script>
 
 <div class="scrim" transition:fade={{ duration: 150 }} onclick={() => (ui.projectEditor = null)} role="presentation"></div>
-<div class="modal" role="dialog" aria-modal="true" aria-label={isNew ? 'New project' : 'Edit project'} transition:scale={{ start: 0.94, duration: 220 }}>
+<div class="modal" role="dialog" aria-modal="true" aria-label={t(isNew ? 'New project' : 'Edit project')} transition:scale={{ start: 0.94, duration: 220 }}>
   <div class="preview" style:background={tint(color, 0.12)}>
     <span class="big pop" style:background="#fff">{#key mascot + color}<Mascot kind={mascot} {color} size={44} />{/key}</span>
     <div>
-      <span class="eyebrow">{isNew ? 'New project' : 'Edit project'}</span>
-      <div class="pname display">{name || 'Project name'}</div>
+      <span class="eyebrow">{t(isNew ? 'New project' : 'Edit project')}</span>
+      <div class="pname display">{name || t('Project name')}</div>
     </div>
   </div>
 
-  <label class="field"><span>Name</span>
-    <input class="input" bind:value={name} use:focus onkeydown={(e) => e.key === 'Enter' && save()} placeholder="e.g. Thesis chapter 2" />
+  <label class="field"><span>{t('Name')}</span>
+    <input class="input" bind:value={name} use:focus onkeydown={(e) => e.key === 'Enter' && save()} placeholder={t('e.g. Thesis chapter 2')} />
   </label>
 
-  <div class="field"><span>Colour</span>
+  <div class="field"><span>{t('Colour')}</span>
     <div class="swatches">
       {#each PALETTE as c}
-        <button class="sw" class:on={color === c.hex} style:background={c.hex} onclick={() => (color = c.hex)} aria-label={c.name} title={c.name}>
+        <button class="sw" class:on={color === c.hex} style:background={c.hex} onclick={() => (color = c.hex)} aria-label={t(c.name)} title={t(c.name)}>
           {#if color === c.hex}<Icon name="check" size={14} stroke={3} />{/if}
         </button>
       {/each}
     </div>
   </div>
 
-  <div class="field"><span>Mascot</span>
+  <div class="field"><span>{t('Mascot')}</span>
     <div class="mascots">
       {#each MASCOT_KEYS as k}
-        <button class="m" class:on={mascot === k} onclick={() => (mascot = k)} aria-label={MASCOTS[k].label} title={MASCOTS[k].label} style:--c={color}>
+        <button class="m" class:on={mascot === k} onclick={() => (mascot = k)} aria-label={t(MASCOTS[k].label)} title={t(MASCOTS[k].label)} style:--c={color}>
           <Mascot kind={k} color={mascot === k ? color : 'var(--ink-2)'} size={24} />
         </button>
       {/each}
@@ -84,18 +85,18 @@
   <div class="actions">
     {#if existing}
       {#if confirmDelete}
-        <span class="warn">Delete {stats.tasks} task{stats.tasks === 1 ? '' : 's'} and {fmtHours(stats.ms)} of history? Archiving keeps them.</span>
-        <button class="btn small danger" onclick={remove}>Delete for good</button>
-        <button class="btn small ghost" onclick={() => (confirmDelete = false)}>Cancel</button>
+        <span class="warn">{tp(stats.tasks, 'Delete {n} task and {h} of history? Archiving keeps them.', 'Delete {n} tasks and {h} of history? Archiving keeps them.', { h: fmtHours(stats.ms) })}</span>
+        <button class="btn small danger" onclick={remove}>{t('Delete for good')}</button>
+        <button class="btn small ghost" onclick={() => (confirmDelete = false)}>{t('Cancel')}</button>
       {:else}
-        <button class="btn small ghost" onclick={archive}><Icon name="archive" size={13} />{existing.archived ? 'Unarchive' : 'Archive'}</button>
-        <button class="btn small ghost danger" onclick={() => (confirmDelete = true)}><Icon name="trash" size={13} />Delete</button>
+        <button class="btn small ghost" onclick={archive}><Icon name="archive" size={13} />{t(existing.archived ? 'Unarchive' : 'Archive')}</button>
+        <button class="btn small ghost danger" onclick={() => (confirmDelete = true)}><Icon name="trash" size={13} />{t('Delete')}</button>
       {/if}
     {/if}
     <span class="spacer"></span>
     {#if !confirmDelete}
-      <button class="btn ghost" onclick={() => (ui.projectEditor = null)}>Cancel</button>
-      <button class="btn primary" onclick={save} disabled={!name.trim()}>{isNew ? 'Create project' : 'Save'}</button>
+      <button class="btn ghost" onclick={() => (ui.projectEditor = null)}>{t('Cancel')}</button>
+      <button class="btn primary" onclick={save} disabled={!name.trim()}>{t(isNew ? 'Create project' : 'Save')}</button>
     {/if}
   </div>
 </div>

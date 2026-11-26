@@ -1,13 +1,28 @@
+import { lang, t } from './i18n.svelte';
+
 export const MIN = 60_000;
 export const HOUR = 60 * MIN;
 export const DAY = 24 * HOUR;
 
 const p2 = (n: number) => String(n).padStart(2, '0');
 
-export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-export const MONTHS_SHORT = MONTHS.map((m) => m.slice(0, 3));
-export const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-export const WEEKDAYS_SHORT = WEEKDAYS.map((d) => d.slice(0, 3));
+const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTHS_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+const MONTHS_SHORT_FR = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+const WEEKDAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const WEEKDAYS_FR = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const WEEKDAYS_SHORT_FR = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+
+const fr = () => lang.code === 'fr';
+export const months = () => (fr() ? MONTHS_FR : MONTHS_EN);
+export const monthsShort = () => (fr() ? MONTHS_SHORT_FR : MONTHS_EN.map((m) => m.slice(0, 3)));
+export const weekdays = () => (fr() ? WEEKDAYS_FR : WEEKDAYS_EN);
+export const weekdaysShort = () => (fr() ? WEEKDAYS_SHORT_FR : WEEKDAYS_EN.map((d) => d.slice(0, 3)));
+/** Short weekday names starting on Monday. */
+export const weekHeader = () => {
+  const w = weekdaysShort();
+  return [...w.slice(1), w[0]];
+};
 
 export function dayKey(d: Date | number): string {
   const x = new Date(d);
@@ -61,12 +76,13 @@ export function fmtDur(ms: number): string {
   const m = Math.max(0, Math.round(ms / MIN));
   const h = Math.floor(m / 60);
   const r = m % 60;
+  if (fr()) return h ? `${h} h ${p2(r)}` : `${r} min`;
   return h ? `${h}h ${p2(r)}m` : `${r}m`;
 }
 
 /** Short form for big numbers: "142h" past 100 hours. */
 export function fmtHours(ms: number): string {
-  return ms >= 100 * HOUR ? `${Math.round(ms / HOUR)}h` : fmtDur(ms);
+  return ms >= 100 * HOUR ? `${Math.round(ms / HOUR)}${fr() ? ' h' : 'h'}` : fmtDur(ms);
 }
 
 /** "1:02:03" or "02:03" */
@@ -85,12 +101,12 @@ export function fmtTime(ms: number): string {
 
 export function fmtDayLong(d: Date | number): string {
   const x = new Date(d);
-  return `${WEEKDAYS[x.getDay()]} ${x.getDate()} ${MONTHS[x.getMonth()]}`;
+  return `${weekdays()[x.getDay()]} ${x.getDate()} ${months()[x.getMonth()]}`;
 }
 
 export function fmtDayShort(d: Date | number): string {
   const x = new Date(d);
-  return `${WEEKDAYS_SHORT[x.getDay()]} ${x.getDate()} ${MONTHS_SHORT[x.getMonth()]}`;
+  return `${weekdaysShort()[x.getDay()]} ${x.getDate()} ${monthsShort()[x.getMonth()]}`;
 }
 
 /** Friendly due date relative to today. */
@@ -98,11 +114,11 @@ export function fmtDue(key: string, now: number): { text: string; overdue: boole
   const d = parseDay(key).getTime();
   const today = startOfDay(now).getTime();
   const diff = Math.round((d - today) / DAY);
-  if (diff === 0) return { text: 'Today', overdue: false, soon: true };
-  if (diff === 1) return { text: 'Tomorrow', overdue: false, soon: true };
-  if (diff === -1) return { text: 'Yesterday', overdue: true, soon: false };
+  if (diff === 0) return { text: t('Today'), overdue: false, soon: true };
+  if (diff === 1) return { text: t('Tomorrow'), overdue: false, soon: true };
+  if (diff === -1) return { text: t('Yesterday'), overdue: true, soon: false };
   if (diff < 0) return { text: fmtDayShort(d), overdue: true, soon: false };
-  if (diff < 7) return { text: WEEKDAYS[new Date(d).getDay()], overdue: false, soon: false };
+  if (diff < 7) return { text: weekdays()[new Date(d).getDay()], overdue: false, soon: false };
   return { text: fmtDayShort(d), overdue: false, soon: false };
 }
 

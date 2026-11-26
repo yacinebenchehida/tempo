@@ -3,6 +3,7 @@
   import { ui, taskById } from '../lib/store.svelte';
   import { resolveIdle, running } from '../lib/timer.svelte';
   import { fmtDur, fmtTime } from '../lib/time';
+  import { t } from '../lib/i18n.svelte';
 
   const p = ui.idlePrompt!;
   const task = taskById(running()?.taskId);
@@ -10,13 +11,13 @@
 </script>
 
 <div class="scrim" transition:fade={{ duration: 150 }} role="presentation"></div>
-<div class="modal" role="alertdialog" aria-modal="true" aria-label="You were away" transition:scale={{ start: 0.94, duration: 220 }}>
-  <h2 class="display">You were away for {fmtDur(away)}</h2>
-  <p>From {fmtTime(p.since)} to {fmtTime(p.until)}, while the timer was running{task ? ` on “${task.title}”` : ''}. What should happen to that time?</p>
+<div class="modal" role="alertdialog" aria-modal="true" aria-label={t('You were away')} transition:scale={{ start: 0.94, duration: 220 }}>
+  <h2 class="display">{t('You were away for {d}', { d: fmtDur(away) })}</h2>
+  <p>{task ? t('From {a} to {b}, while the timer was running on “{task}”. What should happen to that time?', { a: fmtTime(p.since), b: fmtTime(p.until), task: task.title }) : t('From {a} to {b}, while the timer was running. What should happen to that time?', { a: fmtTime(p.since), b: fmtTime(p.until) })}</p>
   <div class="actions">
-    <button class="btn primary" onclick={() => resolveIdle('remove')}>Remove it, keep timing</button>
-    <button class="btn" onclick={() => resolveIdle('stop')}>Remove it and stop</button>
-    <button class="btn ghost" onclick={() => resolveIdle('keep')}>Keep it, I was working</button>
+    <button class="btn primary" onclick={() => resolveIdle('remove')}>{t('Remove it, keep timing')}</button>
+    <button class="btn" onclick={() => resolveIdle('stop')}>{t('Remove it and stop')}</button>
+    <button class="btn ghost" onclick={() => resolveIdle('keep')}>{t('Keep it, I was working')}</button>
   </div>
 </div>
 

@@ -5,6 +5,7 @@
   import { fmtDur } from '../lib/time';
   import Icon from './Icon.svelte';
   import Mascot from './Mascot.svelte';
+  import { t } from '../lib/i18n.svelte';
 
   const tv = $derived(timerView(clock.now));
   const C = 2 * Math.PI * 32;
@@ -15,7 +16,7 @@
 
 <section class="timer" class:dark={tv.phase === 'break'} style:background={bg}>
   <div class="seg modes">
-    <button class:on={db.timer.mode === 'stopwatch'} onclick={() => setMode('stopwatch')}>Stopwatch</button>
+    <button class:on={db.timer.mode === 'stopwatch'} onclick={() => setMode('stopwatch')}>{t('Stopwatch')}</button>
     <button class:on={db.timer.mode === 'pomodoro'} onclick={() => setMode('pomodoro')}>Pomodoro</button>
   </div>
   <div class="row">
@@ -35,16 +36,16 @@
       {#if tv.project}<Mascot kind={tv.project.mascot} color={tv.phase === 'break' ? '#8FD3C3' : tv.project.color} size={16} />{/if}
       <span>{tv.task.title}</span>
     </button>
-    <span class="total num">Total on this task: {fmtDur(total)}</span>
+    <span class="total num">{t('Total on this task: {d}', { d: fmtDur(total) })}</span>
   {:else}
-    <span class="hint">Press play on any task to start timing it.</span>
+    <span class="hint">{t('Press play on any task to start timing it.')}</span>
   {/if}
   {#if tv.phase === 'break'}
-    <div class="actions"><button class="btn primary grow-1" onclick={skipBreak}><Icon name="skip" size={14} />Skip break</button></div>
+    <div class="actions"><button class="btn primary grow-1" onclick={skipBreak}><Icon name="skip" size={14} />{t('Skip break')}</button></div>
   {:else if tv.task}
     <div class="actions">
-      <button class="btn primary grow-1" onclick={() => toggle()}><Icon name={tv.isRunning ? 'pause' : 'play'} size={13} />{tv.isRunning ? 'Pause' : 'Resume'}</button>
-      <button class="btn square" aria-label="Stop and save" title="Stop and save" onclick={stop} disabled={tv.phase === 'idle'}><Icon name="stop" size={13} /></button>
+      <button class="btn primary grow-1" onclick={() => toggle()}><Icon name={tv.isRunning ? 'pause' : 'play'} size={13} />{t(tv.isRunning ? 'Pause' : 'Resume')}</button>
+      <button class="btn square" aria-label={t('Stop and save')} title={t('Stop and save')} onclick={stop} disabled={tv.phase === 'idle'}><Icon name="stop" size={13} /></button>
     </div>
   {/if}
 </section>

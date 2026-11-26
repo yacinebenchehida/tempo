@@ -2,6 +2,7 @@ import { db, ui, clock, taskById, projectById, toast } from './store.svelte';
 import type { TimerMode } from './types';
 import { MIN, dayKey, addDays, fmtClock, startOfDay, uid } from './time';
 import { setTray, onTray, idleSeconds, notify, warmUpNotifications } from './native';
+import { t as tr, tp } from './i18n.svelte';
 
 export const running = () => db.entries.find((e) => e.end === null) ?? null;
 
@@ -15,23 +16,23 @@ export function timerView(now: number) {
   const session = entry ? now - entry.start : 0;
   let display = 0;
   let progress = 0;
-  let label = 'No timer running';
+  let label = tr('No timer running');
 
   if (t.phase === 'break' && t.breakStart) {
     const len = t.breakLength * MIN;
     const left = Math.max(0, t.breakStart + len - now);
     display = left;
     progress = 1 - left / len;
-    label = t.breakLength >= db.settings.pomodoroLong ? 'Long break' : 'Short break';
+    label = tr(t.breakLength >= db.settings.pomodoroLong ? 'Long break' : 'Short break');
   } else if (t.mode === 'pomodoro' && (t.phase === 'work' || t.phase === 'paused')) {
     const done = t.pomoWorked + session;
     display = Math.max(0, work - done);
     progress = Math.min(1, done / work);
-    label = (t.phase === 'paused' ? 'Paused · ' : 'Focus · ') + `${(t.pomoDone % db.settings.pomodoroLongEvery) + 1} of ${db.settings.pomodoroLongEvery}`;
+    label = tr(t.phase === 'paused' ? 'Paused · {i} of {n}' : 'Focus · {i} of {n}', { i: (t.pomoDone % db.settings.pomodoroLongEvery) + 1, n: db.settings.pomodoroLongEvery });
   } else if (t.phase === 'work' || t.phase === 'paused') {
     display = session;
     progress = (session % (60 * MIN)) / (60 * MIN);
-    label = t.phase === 'paused' ? 'Paused' : 'Tracking';
+    label = tr(t.phase === 'paused' ? 'Paused' : 'Tracking');
   }
   return {
     phase: t.phase,
@@ -138,14 +139,14 @@ function checkPomodoro(now: number) {
       t.breakLength = long ? s.pomodoroLong : s.pomodoroShort;
       t.breakStart = now;
       t.phase = 'break';
-      notify('Focus block done', `${t.pomoDone % s.pomodoroLongEvery || s.pomodoroLongEvery} of ${s.pomodoroLongEvery} complete. Time for a ${t.breakLength}-minute break.`);
+      notify(tr('Focus block done'), tr('{i} of {n} complete. Time for a {m}-minute break.', { i: t.pomoDone % s.pomodoroLongEvery || s.pomodoroLongEvery, n: s.pomodoroLongEvery, m: t.breakLength }));
     }
   }
   if (t.phase === 'break' && t.breakStart && now >= t.breakStart + t.breakLength * MIN) {
     t.phase = t.taskId ? 'paused' : 'idle';
     t.breakStart = null;
     const task = taskById(t.taskId);
-    notify('Break is over', task ? `Ready for the next focus block on “${task.title}”?` : 'Ready for the next focus block?');
+    notify(tr('Break is over'), task ? tr('Ready for the next focus block on “{task}”?', { task: task.title }) : tr('Ready for the next focus block?'));
   }
 }
 
@@ -159,7 +160,7 @@ async function checkIdle(now: number) {
   if (idleSince === null && idle >= mins * 60) {
     idleSince = now - idle * 1000;
     const task = taskById(db.timer.taskId);
-    notify('Still working?', `You've been away for ${Math.round(idle / 60)} minutes while timing “${task?.title ?? 'a task'}”.`);
+    notify(tr('Still working?'), tr("You've been away for {m} minutes while timing “{task}”.", { m: Math.round(idle / 60), task: task?.title ?? tr('a task') }));
   } else if (idleSince !== null && idle < 10) {
     ui.idlePrompt = { since: idleSince, until: now - idle * 1000 };
     idleSince = null;
@@ -184,7 +185,7 @@ export function resolveIdle(choice: 'keep' | 'remove' | 'stop') {
   } else {
     Object.assign(db.timer, { phase: 'paused', pomoWorked: 0 });
   }
-  toast(choice === 'remove' ? 'Away time removed' : 'Away time removed and timer stopped');
+  toast(tr(choice === 'remove' ? 'Away time removed' : 'Away time removed and timer stopped'));
 }
 
 function checkDue(now: number) {
@@ -198,25 +199,28 @@ function checkDue(now: number) {
   const overdue = open.filter((t) => t.due! < today);
   const dueToday = open.filter((t) => t.due === today);
   const parts: string[] = [];
-  if (dueToday.length) parts.push(`${dueToday.length} due today`);
-  if (dueTomorrow.length) parts.push(`${dueTomorrow.length} due tomorrow`);
-  if (overdue.length) parts.push(`${overdue.length} overdue`);
+  if (dueToday.length) parts.push(tp(dueToday.length, '{n} task due today', '{n} tasks due today'));
+  if (dueTomorrow.length) parts.push(tp(dueTomorrow.length, '{n} task due tomorrow', '{n} tasks due tomorrow'));
+  if (overdue.length) parts.push(tp(overdue.length, '{n} overdue task', '{n} overdue tasks'));
   if (!parts.length) return;
   const first = (dueToday[0] ?? dueTomorrow[0] ?? overdue[0]).title;
-  notify(parts.join(', ').replace(/^./, (c) => c.toUpperCase()), `Including “${first}”.`);
+  notify(parts.join(', '), tr('Including “{task}”.', { task: first }));
 }
 
 function syncTray(now: number) {
   const v = timerView(now);
   let title = '';
   if (v.phase === 'work') title = v.clock;
-  else if (v.phase === 'break') title = 'Break ' + v.clock;
-  else if (v.phase === 'paused') title = 'Paused';
+  else if (v.phase === 'break') title = tr('Break') + ' ' + v.clock;
+  else if (v.phase === 'paused') title = tr('Paused');
   setTray({
     title,
     color: v.phase === 'work' && v.project ? v.project.color : null,
-    task: v.task ? `${v.project?.name ?? ''} · ${v.task.title}` : 'No timer running',
-    toggle: v.phase === 'work' ? 'Pause' : v.task ? 'Resume' : 'Start',
+    task: v.task ? `${v.project?.name ?? ''} · ${v.task.title}` : tr('No timer running'),
+    toggle: tr(v.phase === 'work' ? 'Pause' : v.task ? 'Resume' : 'Start'),
+    stop: tr('Stop & save'),
+    open: tr('Open Tempo'),
+    quit: tr('Quit Tempo'),
     canStop: v.phase === 'work' || v.phase === 'paused'
   });
 }

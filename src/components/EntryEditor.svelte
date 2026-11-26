@@ -2,6 +2,7 @@
   import { fade, scale } from 'svelte/transition';
   import { db, ui, clock, projectById, addEntry, updateEntry, deleteEntry, toast } from '../lib/store.svelte';
   import { dayKey, atTime, hhmm, fmtDur, DAY } from '../lib/time';
+  import { t } from '../lib/i18n.svelte';
 
   const ed = ui.entryEditor!;
   const existing = ed.id ? db.entries.find((e) => e.id === ed.id) : null;
@@ -31,10 +32,10 @@
     if (!valid) return;
     if (existing) {
       updateEntry(existing.id, { taskId, start: startMs, end: endMs });
-      toast('Entry updated');
+      toast(t('Entry updated'));
     } else {
       addEntry(taskId, startMs, endMs);
-      toast(`Added ${fmtDur(endMs - startMs)}`);
+      toast(t('Added {d}', { d: fmtDur(endMs - startMs) }));
     }
     ui.entryEditor = null;
   }
@@ -45,25 +46,25 @@
 </script>
 
 <div class="scrim" transition:fade={{ duration: 150 }} onclick={() => (ui.entryEditor = null)} role="presentation"></div>
-<div class="modal" role="dialog" aria-modal="true" aria-label={existing ? 'Edit time' : 'Add time'} transition:scale={{ start: 0.94, duration: 200 }}>
-  <h2 class="display">{existing ? 'Edit time' : 'Add time manually'}</h2>
-  <label class="field"><span>Task</span>
+<div class="modal" role="dialog" aria-modal="true" aria-label={t(existing ? 'Edit time' : 'Add time manually')} transition:scale={{ start: 0.94, duration: 200 }}>
+  <h2 class="display">{t(existing ? 'Edit time' : 'Add time manually')}</h2>
+  <label class="field"><span>{t('Task')}</span>
     <select class="input" bind:value={taskId}>
-      <option value="" disabled>Choose a task</option>
-      {#each tasks as { t, p } (t.id)}<option value={t.id}>{p?.name} · {t.title}</option>{/each}
+      <option value="" disabled>{t('Choose a task')}</option>
+      {#each tasks as { t: tk, p } (tk.id)}<option value={tk.id}>{p?.name} · {tk.title}</option>{/each}
     </select>
   </label>
   <div class="row">
-    <label class="field"><span>Day</span><input class="input" type="date" bind:value={day} /></label>
-    <label class="field"><span>From</span><input class="input" type="time" bind:value={from} /></label>
-    <label class="field"><span>To</span><input class="input" type="time" bind:value={to} /></label>
+    <label class="field"><span>{t('Day')}</span><input class="input" type="date" bind:value={day} /></label>
+    <label class="field"><span>{t('From')}</span><input class="input" type="time" bind:value={from} /></label>
+    <label class="field"><span>{t('To')}</span><input class="input" type="time" bind:value={to} /></label>
   </div>
-  <p class="sum">{valid ? fmtDur(endMs - startMs) : 'Pick a task and a time range'}</p>
+  <p class="sum">{valid ? fmtDur(endMs - startMs) : t('Pick a task and a time range')}</p>
   <div class="actions">
-    {#if existing}<button class="btn small ghost danger" onclick={remove}>Delete entry</button>{/if}
+    {#if existing}<button class="btn small ghost danger" onclick={remove}>{t('Delete entry')}</button>{/if}
     <span class="spacer"></span>
-    <button class="btn ghost" onclick={() => (ui.entryEditor = null)}>Cancel</button>
-    <button class="btn primary" onclick={save} disabled={!valid}>Save</button>
+    <button class="btn ghost" onclick={() => (ui.entryEditor = null)}>{t('Cancel')}</button>
+    <button class="btn primary" onclick={save} disabled={!valid}>{t('Save')}</button>
   </div>
 </div>
 

@@ -7,6 +7,7 @@
   import { tint } from '../lib/palette';
   import Icon from './Icon.svelte';
   import Mascot from './Mascot.svelte';
+  import { t } from '../lib/i18n.svelte';
 
   const task = $derived(taskById(ui.openTaskId));
   const project = $derived(task ? projectById(task.projectId) : null);
@@ -26,7 +27,7 @@
   }
 
   function close() {
-    if (task && !task.title.trim()) task.title = 'Untitled task';
+    if (task && !task.title.trim()) task.title = t('Untitled task');
     ui.openTaskId = null;
     confirmDelete = false;
   }
@@ -42,112 +43,112 @@
 
 {#if task}
   <div class="scrim" transition:fade={{ duration: 150 }} onclick={close} role="presentation"></div>
-  <aside class="drawer" transition:fly={{ x: 420, duration: 260, opacity: 1 }} aria-label="Task details" style:--c={project?.color ?? '#8A909C'}>
+  <aside class="drawer" transition:fly={{ x: 420, duration: 260, opacity: 1 }} aria-label={t('Task details')} style:--c={project?.color ?? '#8A909C'}>
     <div class="top">
       <span class="badge" style:background={project ? tint(project.color, 0.14) : 'var(--sunken)'}>
         {#if project}<Mascot kind={project.mascot} color={project.color} size={22} />{/if}
       </span>
-      <select class="input proj" value={task.projectId} onchange={(e) => updateTask(task.id, { projectId: (e.currentTarget as HTMLSelectElement).value })} aria-label="Project">
+      <select class="input proj" value={task.projectId} onchange={(e) => updateTask(task.id, { projectId: (e.currentTarget as HTMLSelectElement).value })} aria-label={t('Project')}>
         {#each projects as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
-        {#if project?.archived}<option value={project.id}>{project.name} (archived)</option>{/if}
+        {#if project?.archived}<option value={project.id}>{project.name} {t('(archived)')}</option>{/if}
       </select>
-      <button class="icon-btn" aria-label="Close" onclick={close}><Icon name="x" size={18} /></button>
+      <button class="icon-btn" aria-label={t('Close')} onclick={close}><Icon name="x" size={18} /></button>
     </div>
 
-    <input class="title display" placeholder="Task name" bind:value={task.title} use:focusIfEmpty aria-label="Task name" />
+    <input class="title display" placeholder={t('Task name')} bind:value={task.title} use:focusIfEmpty aria-label={t('Task name')} />
 
     <div class="timer-row">
-      <button class="btn primary" onclick={() => toggle(task.id)}><Icon name={isRunning ? 'pause' : 'play'} size={13} />{isRunning ? 'Pause timer' : 'Start timer'}</button>
-      <div class="spent"><span class="num display">{fmtDur(spent)}</span><span class="muted">{task.estimate ? `of ${fmtDur(task.estimate * 60000)} estimated` : 'tracked'}</span></div>
+      <button class="btn primary" onclick={() => toggle(task.id)}><Icon name={isRunning ? 'pause' : 'play'} size={13} />{t(isRunning ? 'Pause timer' : 'Start timer')}</button>
+      <div class="spent"><span class="num display">{fmtDur(spent)}</span><span class="muted">{task.estimate ? t('of {d} estimated', { d: fmtDur(task.estimate * 60000) }) : t('tracked')}</span></div>
     </div>
     {#if task.estimate}
       <div class="est-bar"><span style:width="{Math.min(100, (spent / (task.estimate * 60000)) * 100)}%" class:over={spent > task.estimate * 60000}></span></div>
     {/if}
 
     <div class="grid">
-      <label class="field"><span>Status</span>
+      <label class="field"><span>{t('Status')}</span>
         <select class="input" value={task.column} onchange={(e) => updateTask(task.id, { column: (e.currentTarget as HTMLSelectElement).value as any })}>
-          {#each COLUMNS as c}<option value={c.id}>{c.name}</option>{/each}
+          {#each COLUMNS as c}<option value={c.id}>{t(c.name)}</option>{/each}
         </select>
       </label>
-      <label class="field"><span>Due date</span>
+      <label class="field"><span>{t('Due date')}</span>
         <div class="due-row">
           <input class="input" type="date" value={task.due ?? ''} onchange={(e) => (task.due = (e.currentTarget as HTMLInputElement).value || null)} />
-          {#if task.due}<button class="icon-btn" aria-label="Clear due date" onclick={() => (task.due = null)}><Icon name="x" size={14} /></button>{/if}
+          {#if task.due}<button class="icon-btn" aria-label={t('Clear due date')} onclick={() => (task.due = null)}><Icon name="x" size={14} /></button>{/if}
         </div>
       </label>
-      <div class="field"><span>Priority</span>
+      <div class="field"><span>{t('Priority')}</span>
         <div class="seg">
           {#each [1, 2, 3] as const as p}
-            <button class:on={task.priority === p} onclick={() => (task.priority = p as Level)}>{p === 1 ? 'High' : p === 2 ? 'Medium' : 'Low'}</button>
+            <button class:on={task.priority === p} onclick={() => (task.priority = p as Level)}>{t(p === 1 ? 'High' : p === 2 ? 'Medium' : 'Low')}</button>
           {/each}
         </div>
       </div>
-      <div class="field"><span>Difficulty</span>
+      <div class="field"><span>{t('Difficulty')}</span>
         <div class="seg">
           {#each [1, 2, 3] as const as d}
-            <button class:on={task.difficulty === d} onclick={() => (task.difficulty = d as Level)} aria-label="Difficulty {d} of 3">
+            <button class:on={task.difficulty === d} onclick={() => (task.difficulty = d as Level)} aria-label={t('Difficulty {d} of 3', { d })}>
               <span class="dots">{#each [1, 2, 3] as i}<span class:on={i <= d}></span>{/each}</span>
             </button>
           {/each}
         </div>
       </div>
-      <div class="field span2"><span>Time estimate</span>
+      <div class="field span2"><span>{t('Time estimate')}</span>
         <div class="est">
-          <input class="input num" type="number" min="0" value={estH} oninput={(e) => setEstimate(+(e.currentTarget as HTMLInputElement).value, estM)} aria-label="Hours" /><span class="muted">h</span>
-          <input class="input num" type="number" min="0" max="59" step="5" value={estM} oninput={(e) => setEstimate(estH, +(e.currentTarget as HTMLInputElement).value)} aria-label="Minutes" /><span class="muted">m</span>
+          <input class="input num" type="number" min="0" value={estH} oninput={(e) => setEstimate(+(e.currentTarget as HTMLInputElement).value, estM)} aria-label={t('Hours')} /><span class="muted">{t('h')}</span>
+          <input class="input num" type="number" min="0" max="59" step="5" value={estM} oninput={(e) => setEstimate(estH, +(e.currentTarget as HTMLInputElement).value)} aria-label={t('Minutes')} /><span class="muted">{t('m')}</span>
           {#each [[0, 30], [1, 0], [2, 0], [4, 0], [8, 0]] as [h, m]}
-            <button class="btn small" onclick={() => setEstimate(h, m)}>{h ? h + 'h' : m + 'm'}</button>
+            <button class="btn small" onclick={() => setEstimate(h, m)}>{h ? t('{h}h', { h }) : t('{m}m', { m })}</button>
           {/each}
         </div>
       </div>
     </div>
 
     <section>
-      <div class="sec-head"><span class="eyebrow">Subtasks</span>{#if task.subtasks.length}<span class="muted small">{task.subtasks.filter((s) => s.done).length} of {task.subtasks.length}</span>{/if}</div>
+      <div class="sec-head"><span class="eyebrow">{t('Subtasks')}</span>{#if task.subtasks.length}<span class="muted small">{t('{a} of {b}', { a: task.subtasks.filter((s) => s.done).length, b: task.subtasks.length })}</span>{/if}</div>
       <ul class="subs">
         {#each task.subtasks as s (s.id)}
           <li>
-            <button class="check" class:on={s.done} onclick={() => (s.done = !s.done)} aria-label={s.done ? 'Mark not done' : 'Mark done'}>{#if s.done}<Icon name="check" size={12} stroke={3} />{/if}</button>
-            <input class="sub-input" class:done={s.done} bind:value={s.title} aria-label="Subtask" />
-            <button class="icon-btn del" aria-label="Delete subtask" onclick={() => (task.subtasks = task.subtasks.filter((x) => x.id !== s.id))}><Icon name="x" size={13} /></button>
+            <button class="check" class:on={s.done} onclick={() => (s.done = !s.done)} aria-label={t(s.done ? 'Mark not done' : 'Mark done')}>{#if s.done}<Icon name="check" size={12} stroke={3} />{/if}</button>
+            <input class="sub-input" class:done={s.done} bind:value={s.title} aria-label={t('Subtask')} />
+            <button class="icon-btn del" aria-label={t('Delete subtask')} onclick={() => (task.subtasks = task.subtasks.filter((x) => x.id !== s.id))}><Icon name="x" size={13} /></button>
           </li>
         {/each}
       </ul>
-      <input class="input" placeholder="Add a subtask, then Enter" bind:value={newSub} onkeydown={(e) => e.key === 'Enter' && addSub()} />
+      <input class="input" placeholder={t('Add a subtask, then Enter')} bind:value={newSub} onkeydown={(e) => e.key === 'Enter' && addSub()} />
     </section>
 
     <section>
-      <span class="eyebrow">Notes</span>
-      <textarea class="input" placeholder="Anything worth remembering" bind:value={task.notes}></textarea>
+      <span class="eyebrow">{t('Notes')}</span>
+      <textarea class="input" placeholder={t('Anything worth remembering')} bind:value={task.notes}></textarea>
     </section>
 
     <section>
-      <div class="sec-head"><span class="eyebrow">Time log</span>
-        <button class="btn small" onclick={() => (ui.entryEditor = { id: null, taskId: task.id, day: '' })}><Icon name="plus" size={12} />Add time</button>
+      <div class="sec-head"><span class="eyebrow">{t('Time log')}</span>
+        <button class="btn small" onclick={() => (ui.entryEditor = { id: null, taskId: task.id, day: '' })}><Icon name="plus" size={12} />{t('Add time')}</button>
       </div>
-      {#if !entries.length}<p class="muted small">No time tracked yet.</p>{/if}
+      {#if !entries.length}<p class="muted small">{t('No time tracked yet.')}</p>{/if}
       {#each entries.slice(0, 30) as e (e.id)}
         <div class="entry">
           <span class="muted small day">{fmtDayShort(e.start)}</span>
-          <span class="num small">{fmtTime(e.start)} – {e.end ? fmtTime(e.end) : 'now'}</span>
+          <span class="num small">{fmtTime(e.start)} – {e.end ? fmtTime(e.end) : t('now')}</span>
           <span class="num strong">{fmtDur((e.end ?? clock.now) - e.start)}</span>
           {#if e.end}
-            <button class="icon-btn" aria-label="Edit entry" onclick={() => (ui.entryEditor = { id: e.id, taskId: task.id, day: '' })}><Icon name="edit" size={14} /></button>
-            <button class="icon-btn" aria-label="Delete entry" onclick={() => deleteEntry(e.id)}><Icon name="trash" size={14} /></button>
+            <button class="icon-btn" aria-label={t('Edit entry')} onclick={() => (ui.entryEditor = { id: e.id, taskId: task.id, day: '' })}><Icon name="edit" size={14} /></button>
+            <button class="icon-btn" aria-label={t('Delete entry')} onclick={() => deleteEntry(e.id)}><Icon name="trash" size={14} /></button>
           {/if}
         </div>
       {/each}
-      {#if entries.length > 30}<p class="muted small">…and {entries.length - 30} older entries (see Calendar).</p>{/if}
+      {#if entries.length > 30}<p class="muted small">{t('…and {n} older entries (see Calendar).', { n: entries.length - 30 })}</p>{/if}
     </section>
 
     <div class="danger-zone">
       {#if confirmDelete}
-        <span class="small">Delete this task and its {fmtDur(spent)} of tracked time?</span>
-        <button class="btn small danger" onclick={() => deleteTask(task.id)}>Delete</button>
-        <button class="btn small ghost" onclick={() => (confirmDelete = false)}>Cancel</button>
+        <span class="small">{t('Delete this task and its {d} of tracked time?', { d: fmtDur(spent) })}</span>
+        <button class="btn small danger" onclick={() => deleteTask(task.id)}>{t('Delete')}</button>
+        <button class="btn small ghost" onclick={() => (confirmDelete = false)}>{t('Cancel')}</button>
       {:else}
-        <button class="btn small ghost danger" onclick={() => (confirmDelete = true)}><Icon name="trash" size={13} />Delete task</button>
+        <button class="btn small ghost danger" onclick={() => (confirmDelete = true)}><Icon name="trash" size={13} />{t('Delete task')}</button>
       {/if}
     </div>
   </aside>

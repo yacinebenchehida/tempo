@@ -7,6 +7,7 @@
   import Icon from './Icon.svelte';
   import Mascot from './Mascot.svelte';
   import TimerWidget from './TimerWidget.svelte';
+  import { t } from '../lib/i18n.svelte';
 
   const nav = [
     { id: 'board', name: 'Board', icon: 'board' },
@@ -49,25 +50,25 @@
 
   <nav>
     {#each nav as n}
-      <button class="nav" class:on={ui.view === n.id} onclick={() => (ui.view = n.id)}><Icon name={n.icon} size={18} stroke={1.8} />{n.name}</button>
+      <button class="nav" class:on={ui.view === n.id} onclick={() => (ui.view = n.id)}><Icon name={n.icon} size={18} stroke={1.8} />{t(n.name)}</button>
     {/each}
   </nav>
 
   <div class="projects">
-    <div class="head"><span class="eyebrow">Projects</span><span class="eyebrow muted">this week</span></div>
+    <div class="head"><span class="eyebrow">{t('Projects')}</span><span class="eyebrow muted">{t('this week')}</span></div>
     {#each projects as p (p.id)}
       <div class="proj" class:on={ui.filter === p.id}>
-        <button class="pick" onclick={() => pick(p.id)} title="Show only {p.name}">
+        <button class="pick" onclick={() => pick(p.id)} title={t('Show only {name}', { name: p.name })}>
           <span class="badge" style:background={tint(p.color, 0.14)}><Mascot kind={p.mascot} color={p.color} size={19} /></span>
           <span class="name">{p.name}</span>
           <span class="time num">{(weekTime.get(p.id) ?? 0) >= 60000 ? fmtDur(weekTime.get(p.id)!) : ''}</span>
         </button>
-        <button class="icon-btn edit" aria-label="Edit {p.name}" onclick={() => (ui.projectEditor = p.id)}><Icon name="edit" size={14} /></button>
+        <button class="icon-btn edit" aria-label={t('Edit {name}', { name: p.name })} onclick={() => (ui.projectEditor = p.id)}><Icon name="edit" size={14} /></button>
       </div>
     {/each}
-    <button class="nav add" onclick={() => (ui.projectEditor = 'new')}><Icon name="plus" size={16} />New project</button>
+    <button class="nav add" onclick={() => (ui.projectEditor = 'new')}><Icon name="plus" size={16} />{t('New project')}</button>
     {#if archivedCount}
-      <button class="nav add" onclick={() => (showArchived = !showArchived)}><Icon name="archive" size={15} />{showArchived ? 'Hide' : 'Show'} archived ({archivedCount})</button>
+      <button class="nav add" onclick={() => (showArchived = !showArchived)}><Icon name="archive" size={15} />{t(showArchived ? 'Hide archived ({n})' : 'Show archived ({n})', { n: archivedCount })}</button>
       {#if showArchived}
         {#each db.projects.filter((p) => p.archived) as p (p.id)}
           <button class="nav add" onclick={() => (ui.projectEditor = p.id)}><Mascot kind={p.mascot} color={p.color} size={16} />{p.name}</button>

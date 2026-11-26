@@ -1,5 +1,6 @@
 import type { Data, Project } from './types';
-import { addDays, addMonths, daysInMonth, overlap, startOfMonth, startOfWeek, MONTHS, MONTHS_SHORT, WEEKDAYS_SHORT, HOUR, startOfDay, fmtDayShort } from './time';
+import { t } from './i18n.svelte';
+import { addDays, addMonths, daysInMonth, overlap, startOfMonth, startOfWeek, months, monthsShort, weekdaysShort, HOUR, startOfDay, fmtDayShort } from './time';
 
 export type Period = 'week' | 'month' | 'year';
 export const MAX_SERIES = 7;
@@ -19,11 +20,11 @@ export function periodRange(period: Period, offset: number, now: number): Range 
     const s = addDays(startOfWeek(now), offset * 7);
     for (let i = 0; i < 7; i++) {
       const d = addDays(s, i);
-      buckets.push({ from: d.getTime(), to: addDays(d, 1).getTime(), label: `${WEEKDAYS_SHORT[d.getDay()]} ${d.getDate()}`, long: fmtDayShort(d) });
+      buckets.push({ from: d.getTime(), to: addDays(d, 1).getTime(), label: `${weekdaysShort()[d.getDay()]} ${d.getDate()}`, long: fmtDayShort(d) });
     }
     const e = addDays(s, 6);
     const same = s.getMonth() === e.getMonth();
-    const label = `${s.getDate()}${same ? '' : ' ' + MONTHS[s.getMonth()]} – ${e.getDate()} ${MONTHS[e.getMonth()]} ${e.getFullYear()}`;
+    const label = `${s.getDate()}${same ? '' : ' ' + months()[s.getMonth()]} – ${e.getDate()} ${months()[e.getMonth()]} ${e.getFullYear()}`;
     return { from: s.getTime(), to: addDays(s, 7).getTime(), label, buckets, bucketUnit: 'day' };
   }
   if (period === 'month') {
@@ -33,12 +34,12 @@ export function periodRange(period: Period, offset: number, now: number): Range 
       const d = addDays(s, i);
       buckets.push({ from: d.getTime(), to: addDays(d, 1).getTime(), label: i % 5 === 0 ? String(i + 1) : '', long: fmtDayShort(d) });
     }
-    return { from: s.getTime(), to: addMonths(s, 1).getTime(), label: `${MONTHS[s.getMonth()]} ${s.getFullYear()}`, buckets, bucketUnit: 'day' };
+    return { from: s.getTime(), to: addMonths(s, 1).getTime(), label: `${months()[s.getMonth()]} ${s.getFullYear()}`, buckets, bucketUnit: 'day' };
   }
   const y = new Date(now).getFullYear() + offset;
   for (let m = 0; m < 12; m++) {
     const d = new Date(y, m, 1);
-    buckets.push({ from: d.getTime(), to: new Date(y, m + 1, 1).getTime(), label: MONTHS_SHORT[m], long: `${MONTHS[m]} ${y}` });
+    buckets.push({ from: d.getTime(), to: new Date(y, m + 1, 1).getTime(), label: monthsShort()[m], long: `${months()[m]} ${y}` });
   }
   return { from: new Date(y, 0, 1).getTime(), to: new Date(y + 1, 0, 1).getTime(), label: String(y), buckets, bucketUnit: 'month' };
 }
@@ -79,7 +80,7 @@ export function summarize(db: Data, period: Period, offset: number, now: number)
   const shown = ranked.length > MAX_SERIES ? ranked.slice(0, MAX_SERIES - 1) : ranked;
   const folded = ranked.length > MAX_SERIES ? ranked.slice(MAX_SERIES - 1) : [];
   const series: Series[] = shown.map(({ p, ms }) => ({ id: p.id, name: p.name, color: p.color, mascot: p.mascot, total: ms }));
-  if (folded.length) series.push({ ...OTHER, total: folded.reduce((a, b) => a + b.ms, 0), members: folded.map((f) => f.p) });
+  if (folded.length) series.push({ ...OTHER, name: t('Other'), total: folded.reduce((a, b) => a + b.ms, 0), members: folded.map((f) => f.p) });
   const seriesOf = (projectId: string) => (shown.some((s) => s.p.id === projectId) ? projectId : OTHER.id);
 
   // Stacked buckets.

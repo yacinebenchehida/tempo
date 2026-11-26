@@ -6,6 +6,7 @@
   import { toast } from '../lib/store.svelte';
   import Icon from './Icon.svelte';
   import Mascot from './Mascot.svelte';
+  import { t, tp } from '../lib/i18n.svelte';
 
   let period = $state<Period>('week');
   let offset = $state(0);
@@ -20,7 +21,7 @@
     return summarize(db, period, offset, Date.now());
   });
   const colorOf = (id: string) => s.series.find((x) => x.id === id)?.color ?? OTHER.color;
-  const nameOf = (id: string) => s.series.find((x) => x.id === id)?.name ?? 'Other';
+  const nameOf = (id: string) => s.series.find((x) => x.id === id)?.name ?? t('Other');
 
   // ----- doughnut -----
   const R = 80;
@@ -63,7 +64,7 @@
   const readout = $derived.by(() => {
     if (hoverB === null) return null;
     const b = s.buckets[hoverB];
-    if (!b.total) return `${b.long} · nothing tracked`;
+    if (!b.total) return t('{day} · nothing tracked', { day: b.long });
     const parts = s.series.filter((x) => b.parts.get(x.id)).map((x) => `${x.name} ${fmtDur(b.parts.get(x.id)!)}`);
     return `${b.long} · ${fmtDur(b.total)} — ${parts.join(' · ')}`;
   });
@@ -78,7 +79,7 @@
   const hourMax = $derived(Math.max(1, ...s.hourAvg));
   const peak = $derived.by(() => {
     const best = s.hourAvg.reduce((m, v, i) => (v > s.hourAvg[m] ? i : m), 0);
-    return s.hourAvg[best] ? `Your most active hour is ${best}:00–${best + 1}:00, about ${fmtDur(s.hourAvg[best])} on an active day.` : '';
+    return s.hourAvg[best] ? t('Your most active hour is {a}:00–{b}:00, about {d} on an active day.', { a: best, b: best + 1, d: fmtDur(s.hourAvg[best]) }) : '';
   });
 
   const estMax = $derived(Math.max(1, ...s.estimateRows.map((r) => Math.max(r.actual, r.estimate))) * 1.06);
@@ -88,23 +89,23 @@
   const avg = $derived(s.total / Math.max(1, period === 'year' ? s.activeBuckets : s.activeDays));
   const review = $derived.by(() => {
     const lines: string[] = [];
-    if (!s.total) return ['Nothing tracked in this period yet. Press play on a task and it will show up here.'];
+    if (!s.total) return [t('No time tracked in this period yet. Press play on a task and it will show up here.')];
     const top = s.series[0];
-    lines.push(`${top.name} took ${pct(top.total / s.total)} of your time (${fmtHours(top.total)}).`);
-    if (s.best?.total) lines.push(`Your biggest ${unit} was ${s.best.long}, with ${fmtDur(s.best.total)} tracked.`);
+    lines.push(t('{name} took {p} of your time ({h}).', { name: top.name, p: pct(top.total / s.total), h: fmtHours(top.total) }));
+    if (s.best?.total) lines.push(t(unit === 'month' ? 'Your biggest month was {day}, with {d} tracked.' : 'Your biggest day was {day}, with {d} tracked.', { day: s.best.long, d: fmtDur(s.best.total) }));
     if (s.prevTotal) {
       const d = s.total / s.prevTotal - 1;
-      lines.push(`That's ${signedPct(d)} compared with the ${period === 'year' ? 'previous year' : `previous ${period}`} (${fmtHours(s.prevTotal)}).`);
+      lines.push(t(`That's {p} compared with the previous ${period} ({h}).`, { p: signedPct(d), h: fmtHours(s.prevTotal) }));
     }
-    if (s.done.length) lines.push(`You finished ${s.done.length} task${s.done.length === 1 ? '' : 's'}.` + (s.accuracy !== null ? ` On average they took ${signedPct(s.accuracy)} versus your estimates.` : ''));
+    if (s.done.length) lines.push(tp(s.done.length, 'You finished {n} task.', 'You finished {n} tasks.') + (s.accuracy !== null ? t(' On average they took {p} versus your estimates.', { p: signedPct(s.accuracy) }) : ''));
     if (s.series.length > 1) {
       const low = s.series[s.series.length - 1];
-      if (low.id !== OTHER.id) lines.push(`${low.name} got the least attention (${fmtHours(low.total)}).`);
+      if (low.id !== OTHER.id) lines.push(t('{name} got the least attention ({h}).', { name: low.name, h: fmtHours(low.total) }));
     }
     return lines;
   });
 
-  const title = $derived(period === 'week' ? (offset === 0 ? 'This week' : offset === -1 ? 'Last week' : 'Week') : period === 'month' ? (offset === 0 ? 'This month' : 'Month') : offset === 0 ? 'This year' : 'Year');
+  const title = $derived(t(period === 'week' ? (offset === 0 ? 'This week' : offset === -1 ? 'Last week' : 'Week') : period === 'month' ? (offset === 0 ? 'This month' : 'Month') : offset === 0 ? 'This year' : 'Year'));
 
   function setPeriod(p: Period) {
     period = p;
@@ -125,7 +126,7 @@
     }
     const csv = rows.map((r) => r.map((c) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(',')).join('\n');
     const where = await exportFile(`tempo-time-log-${new Date().toISOString().slice(0, 10)}.csv`, csv);
-    toast(`Saved to ${where}`);
+    toast(t('Saved to {where}', { where }));
   }
 </script>
 
@@ -133,37 +134,37 @@
   <header>
     <div>
       <span class="muted small">{title} · {s.range.label}</span>
-      <h1 class="display">Where your time went</h1>
+      <h1 class="display">{t('Where your time went')}</h1>
     </div>
     <div class="tools">
       <div class="seg">
         {#each [['week', 'Week'], ['month', 'Month'], ['year', 'Year']] as [id, name]}
-          <button class:on={period === id} onclick={() => setPeriod(id as Period)}>{name}</button>
+          <button class:on={period === id} onclick={() => setPeriod(id as Period)}>{t(name)}</button>
         {/each}
       </div>
-      <button class="btn square" aria-label="Previous" onclick={() => offset--}><Icon name="left" /></button>
-      <button class="btn" disabled={offset === 0} onclick={() => (offset = 0)}>Now</button>
-      <button class="btn square" aria-label="Next" disabled={offset >= 0} onclick={() => offset++}><Icon name="right" /></button>
+      <button class="btn square" aria-label={t('Previous')} onclick={() => offset--}><Icon name="left" /></button>
+      <button class="btn" disabled={offset === 0} onclick={() => (offset = 0)}>{t('Now')}</button>
+      <button class="btn square" aria-label={t('Next')} disabled={offset >= 0} onclick={() => offset++}><Icon name="right" /></button>
     </div>
   </header>
 
   <div class="kpis">
-    <div class="kpi"><span class="kl">Total tracked</span><span class="kv display num">{fmtHours(s.total)}</span><span class="kn">{s.prevTotal ? `${signedPct(s.total / s.prevTotal - 1)} vs previous ${period}` : `across ${s.activeDays} active day${s.activeDays === 1 ? '' : 's'}`}</span></div>
-    <div class="kpi"><span class="kl">Average per active {unit}</span><span class="kv display num">{fmtDur(avg)}</span><span class="kn">{period === 'year' ? `${s.activeBuckets} active month${s.activeBuckets === 1 ? '' : 's'}` : `${s.activeDays} active day${s.activeDays === 1 ? '' : 's'}`}</span></div>
-    <div class="kpi"><span class="kl">Tasks completed</span><span class="kv display num">{s.done.length}</span><span class="kn">{s.done.filter((t) => t.priority === 1).length} high priority</span></div>
-    <div class="kpi"><span class="kl">Estimate accuracy</span><span class="kv display num">{signedPct(s.accuracy)}</span><span class="kn">{s.accuracy === null ? 'finish tasks with estimates to see this' : s.accuracy > 0.05 ? 'you take longer than planned' : s.accuracy < -0.05 ? 'you finish faster than planned' : 'spot on'}</span></div>
+    <div class="kpi"><span class="kl">{t('Total tracked')}</span><span class="kv display num">{fmtHours(s.total)}</span><span class="kn">{s.prevTotal ? t(`{p} vs previous ${period}`, { p: signedPct(s.total / s.prevTotal - 1) }) : tp(s.activeDays, 'across {n} active day', 'across {n} active days')}</span></div>
+    <div class="kpi"><span class="kl">{t(unit === 'month' ? 'Average per active month' : 'Average per active day')}</span><span class="kv display num">{fmtDur(avg)}</span><span class="kn">{period === 'year' ? tp(s.activeBuckets, '{n} active month', '{n} active months') : tp(s.activeDays, '{n} active day', '{n} active days')}</span></div>
+    <div class="kpi"><span class="kl">{t('Tasks completed')}</span><span class="kv display num">{s.done.length}</span><span class="kn">{tp(s.done.filter((x) => x.priority === 1).length, '{n} high priority', '{n} high priorities')}</span></div>
+    <div class="kpi"><span class="kl">{t('Estimate accuracy')}</span><span class="kv display num">{signedPct(s.accuracy)}</span><span class="kn">{t(s.accuracy === null ? 'finish tasks with estimates to see this' : s.accuracy > 0.05 ? 'you take longer than planned' : s.accuracy < -0.05 ? 'you finish faster than planned' : 'spot on')}</span></div>
   </div>
 
   {#if !s.total}
     <div class="card empty">
       <Mascot kind="owl" color="var(--ink-3)" size={40} />
-      <p>No time tracked in this period yet. Press play on a task and it will show up here.</p>
+      <p>{t('No time tracked in this period yet. Press play on a task and it will show up here.')}</p>
     </div>
   {:else}
     <div class="row">
       <section class="card donut-card">
-        <h2>Time per project</h2>
-        <svg viewBox="0 0 220 220" width="220" height="220" role="img" aria-label="Doughnut chart of time per project: {s.series.map((x) => `${x.name} ${pct(x.total / s.total)}`).join(', ')}">
+        <h2>{t('Time per project')}</h2>
+        <svg viewBox="0 0 220 220" width="220" height="220" role="img" aria-label={t('Doughnut chart of time per project: {list}', { list: s.series.map((x) => `${x.name} ${pct(x.total / s.total)}`).join(', ') })}>
           {#each donut as d (d.id)}
             <circle
               cx="110" cy="110" r={R} fill="none" stroke={d.color}
@@ -177,7 +178,7 @@
               onmouseleave={() => (hoverS = null)}
             />
           {/each}
-          <text x="110" y="103" text-anchor="middle" class="c-label">{center ? center.name : 'Total'}</text>
+          <text x="110" y="103" text-anchor="middle" class="c-label">{center ? center.name : t('Total')}</text>
           <text x="110" y="131" text-anchor="middle" class="c-value display">{fmtHours(center ? center.total : s.total)}</text>
           {#if center}<text x="110" y="150" text-anchor="middle" class="c-label">{pct(center.total / s.total)}</text>{/if}
         </svg>
@@ -195,15 +196,15 @@
 
       <section class="card bars-card">
         <div class="bh">
-          <h2>{period === 'year' ? 'Hours per month' : 'Hours per day'}</h2>
+          <h2>{t(period === 'year' ? 'Hours per month' : 'Hours per day')}</h2>
           <div class="keys">{#each s.series as x (x.id)}<span><span class="sw" style:background={x.color}></span>{x.name}</span>{/each}</div>
         </div>
-        <div class="readout num">{readout ?? 'Hover a bar to see the split.'}</div>
-        <svg viewBox="0 0 {W} {H}" width="100%" role="img" aria-label="{period === 'year' ? 'Hours per month' : 'Hours per day'}, stacked by project">
+        <div class="readout num">{readout ?? t('Hover a bar to see the split.')}</div>
+        <svg viewBox="0 0 {W} {H}" width="100%" role="img" aria-label={t('{title}, stacked by project', { title: t(period === 'year' ? 'Hours per month' : 'Hours per day') })}>
           {#each grid as g}
             {@const y = BASE - (g / step.top) * PH}
             <line x1={X0 - 4} x2={W - 4} y1={y} y2={y} stroke={g === 0 ? '#C9CED6' : '#EEF0F3'} />
-            <text x={X0 - 10} y={y + 4} text-anchor="end" class="ax">{g / HOUR}h</text>
+            <text x={X0 - 10} y={y + 4} text-anchor="end" class="ax">{t('{n}h', { n: g / HOUR })}</text>
           {/each}
           {#each bars as b (b.i + period + offset)}
             <g opacity={hoverB !== null && hoverB !== b.i ? 0.4 : 1}>
@@ -221,10 +222,10 @@
     <div class="row">
       <section class="card est-card">
         <div class="bh">
-          <h2>Estimated vs actual</h2>
-          <div class="keys"><span><span class="sw" style:background="var(--ink-2)"></span>Actual</span><span><span class="tick-key"></span>Estimate</span></div>
+          <h2>{t('Estimated vs actual')}</h2>
+          <div class="keys"><span><span class="sw" style:background="var(--ink-2)"></span>{t('Actual')}</span><span><span class="tick-key"></span>{t('Estimate')}</span></div>
         </div>
-        {#if !s.estimateRows.length}<p class="muted small">Give tasks a time estimate to compare it with reality here.</p>{/if}
+        {#if !s.estimateRows.length}<p class="muted small">{t('Give tasks a time estimate to compare it with reality here.')}</p>{/if}
         {#each s.estimateRows as r (r.task.id)}
           <div class="er">
             <span class="en"><span class="dot" style:background={r.project?.color}></span><span class="et">{r.task.title}</span></span>
@@ -238,12 +239,12 @@
       </section>
 
       <section class="card hours-card">
-        <h2>When you work</h2>
-        <svg viewBox="0 0 {hourRange.length * 22} 150" width="100%" role="img" aria-label="Average time tracked per hour of the day">
+        <h2>{t('When you work')}</h2>
+        <svg viewBox="0 0 {hourRange.length * 22} 150" width="100%" role="img" aria-label={t('Average time tracked per hour of the day')}>
           {#each hourRange as h, i}
             {@const v = s.hourAvg[h]}
             {@const bh = (v / hourMax) * 118}
-            <rect class="grow" x={i * 22 + 3} y={126 - bh} width="16" height={Math.max(0, bh)} rx="3" fill="var(--ink-2)" opacity={0.3 + 0.7 * (v / hourMax)}><title>{h}:00 · {fmtDur(v)} on average</title></rect>
+            <rect class="grow" x={i * 22 + 3} y={126 - bh} width="16" height={Math.max(0, bh)} rx="3" fill="var(--ink-2)" opacity={0.3 + 0.7 * (v / hourMax)}><title>{t('{h}:00 · {d} on average', { h, d: fmtDur(v) })}</title></rect>
             {#if h % 2 === 0}<text x={i * 22 + 11} y="146" text-anchor="middle" class="ax">{h}</text>{/if}
           {/each}
         </svg>
@@ -255,32 +256,32 @@
   <div class="row">
     <section class="card table-card">
       <div class="bh">
-        <h2>Projects</h2>
+        <h2>{t('Projects')}</h2>
         <div class="tools">
-          <button class="btn small ghost" onclick={() => (showTable = !showTable)}>{showTable ? 'Hide' : 'Show'} day-by-day table</button>
-          <button class="btn small" onclick={exportCsv}><Icon name="download" size={13} />Export CSV</button>
+          <button class="btn small ghost" onclick={() => (showTable = !showTable)}>{t(showTable ? 'Hide day-by-day table' : 'Show day-by-day table')}</button>
+          <button class="btn small" onclick={exportCsv}><Icon name="download" size={13} />{t('Export CSV')}</button>
         </div>
       </div>
       <div class="tscroll">
         <table>
-          <thead><tr><th>Project</th><th>Time</th><th>Share</th><th>vs previous</th><th>Tasks done</th><th>Over estimate</th></tr></thead>
+          <thead><tr><th>{t('Project')}</th><th>{t('Time')}</th><th>{t('Share')}</th><th>{t('vs previous')}</th><th>{t('Tasks done')}</th><th>{t('Over estimate')}</th></tr></thead>
           <tbody>
             {#each s.table as r (r.project.id)}
               <tr>
-                <td><span class="tp"><Mascot kind={r.project.mascot} color={r.project.color} size={16} />{r.project.name}{r.project.archived ? ' (archived)' : ''}</span></td>
+                <td><span class="tp"><Mascot kind={r.project.mascot} color={r.project.color} size={16} />{r.project.name}{r.project.archived ? ' ' + t('(archived)') : ''}</span></td>
                 <td class="num">{fmtHours(r.ms)}</td>
                 <td class="num">{pct(r.share)}</td>
-                <td class="num">{r.delta === null ? (r.ms ? 'new' : '—') : signedPct(r.delta)}</td>
+                <td class="num">{r.delta === null ? (r.ms ? t('new') : '—') : signedPct(r.delta)}</td>
                 <td class="num">{r.done}</td>
                 <td class="num">{signedPct(r.over)}</td>
               </tr>
             {/each}
-            {#if !s.table.length}<tr><td colspan="6" class="muted">Nothing yet for this period.</td></tr>{/if}
+            {#if !s.table.length}<tr><td colspan="6" class="muted">{t('Nothing yet for this period.')}</td></tr>{/if}
           </tbody>
         </table>
         {#if showTable}
           <table class="daily">
-            <thead><tr><th>{period === 'year' ? 'Month' : 'Day'}</th>{#each s.series as x (x.id)}<th>{x.name}</th>{/each}<th>Total</th></tr></thead>
+            <thead><tr><th>{t(period === 'year' ? 'Month' : 'Day')}</th>{#each s.series as x (x.id)}<th>{x.name}</th>{/each}<th>{t('Total')}</th></tr></thead>
             <tbody>
               {#each s.buckets.filter((b) => !b.future) as b}
                 <tr><td>{b.long}</td>{#each s.series as x (x.id)}<td class="num">{b.parts.get(x.id) ? fmtDur(b.parts.get(x.id)!) : '—'}</td>{/each}<td class="num strong">{b.total ? fmtDur(b.total) : '—'}</td></tr>
@@ -292,7 +293,7 @@
     </section>
 
     <section class="card review">
-      <div class="rh"><span class="rb"><Mascot kind={s.series[0]?.mascot || 'owl'} color="#8FB4E3" size={24} /></span><h2 class="display">{title} in review</h2></div>
+      <div class="rh"><span class="rb"><Mascot kind={s.series[0]?.mascot || 'owl'} color="#8FB4E3" size={24} /></span><h2 class="display">{t('{title} in review', { title })}</h2></div>
       {#each review as line}<p>{line}</p>{/each}
     </section>
   </div>

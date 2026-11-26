@@ -6,6 +6,7 @@
   import { loadSample } from '../lib/sample';
   import Icon from './Icon.svelte';
   import TaskCard from './TaskCard.svelte';
+  import { t } from '../lib/i18n.svelte';
 
   const projects = $derived(activeProjects());
   const visible = (projectId: string) => {
@@ -124,26 +125,26 @@
   <header>
     <div>
       <span class="muted date">{fmtDayLong(clock.now)}</span>
-      <h1 class="display">Board</h1>
+      <h1 class="display">{t('Board')}</h1>
     </div>
     <div class="tools">
-      <button class="chip" class:on={ui.filter === 'all'} onclick={() => (ui.filter = 'all')}><span class="dot" style:background="var(--ink)"></span>All projects</button>
+      <button class="chip" class:on={ui.filter === 'all'} onclick={() => (ui.filter = 'all')}><span class="dot" style:background="var(--ink)"></span>{t('All projects')}</button>
       {#each projects as p (p.id)}
         <button class="chip" class:on={ui.filter === p.id} onclick={() => (ui.filter = ui.filter === p.id ? 'all' : p.id)}><span class="dot" style:background={p.color}></span>{p.name}</button>
       {/each}
-      <button class="btn primary" onclick={newTaskButton}><Icon name="plus" size={14} stroke={2.2} />New task</button>
+      <button class="btn primary" onclick={newTaskButton}><Icon name="plus" size={14} stroke={2.2} />{t('New task')}</button>
     </div>
   </header>
 
   {#if !projects.length}
     <div class="empty card">
-      <h2 class="display">Welcome to Tempo</h2>
-      <p>Start by creating a project. Each one gets its own colour and a little animal, and everything you track is grouped by project.</p>
+      <h2 class="display">{t('Welcome to Tempo')}</h2>
+      <p>{t('Start by creating a project. Each one gets its own colour and a little animal, and everything you track is grouped by project.')}</p>
       <div class="row">
-        <button class="btn primary" onclick={() => (ui.projectEditor = 'new')}><Icon name="plus" size={14} />Create a project</button>
-        <button class="btn" onclick={loadSample}>Explore with sample data</button>
+        <button class="btn primary" onclick={() => (ui.projectEditor = 'new')}><Icon name="plus" size={14} />{t('Create a project')}</button>
+        <button class="btn" onclick={loadSample}>{t('Explore with sample data')}</button>
       </div>
-      <p class="muted small">Sample data can be removed in one click from Settings.</p>
+      <p class="muted small">{t('Sample data can be removed in one click from Settings.')}</p>
     </div>
   {:else}
     <div class="scroller">
@@ -154,10 +155,10 @@
             class:target={drop?.col === col.id}
             ondragover={(e) => onDragOver(e, col.id)}
             ondrop={(e) => onDrop(e, col.id)}
-            aria-label={col.name}
+            aria-label={t(col.name)}
           >
             <div class="col-head">
-              <span class="col-name">{col.name} <span class="muted">{col.list.length}</span></span>
+              <span class="col-name">{t(col.name)} <span class="muted">{col.list.length}</span></span>
               <span class="muted num small">{col.time ? fmtDur(col.time) : ''}</span>
             </div>
             <div class="list">
@@ -179,13 +180,13 @@
               {#if drop?.col === col.id && drop.before === null}<div class="placeholder"></div>{/if}
             </div>
             {#if col.id === 'done' && (col.hidden || showOldDone)}
-              <button class="btn ghost small older" onclick={() => (showOldDone = !showOldDone)}>{showOldDone ? 'Hide older' : `Show ${col.hidden} older`}</button>
+              <button class="btn ghost small older" onclick={() => (showOldDone = !showOldDone)}>{showOldDone ? t('Hide older') : t('Show {n} older', { n: col.hidden })}</button>
             {/if}
             {#if adding === col.id}
               <div class="adder">
                 <input
                   class="input"
-                  placeholder="Task name, then Enter"
+                  placeholder={t('Task name, then Enter')}
                   bind:value={newTitle}
                   use:focus
                   onkeydown={(e) => {
@@ -194,15 +195,15 @@
                   }}
                 />
                 <div class="adder-row">
-                  <select class="input small-select" bind:value={newProject} aria-label="Project">
+                  <select class="input small-select" bind:value={newProject} aria-label={t('Project')}>
                     {#each projects as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
                   </select>
-                  <button class="btn primary small" onclick={() => submitAdd(false)}>Add</button>
-                  <button class="icon-btn" aria-label="Cancel" onclick={() => (adding = null)}><Icon name="x" size={14} /></button>
+                  <button class="btn primary small" onclick={() => submitAdd(false)}>{t('Add')}</button>
+                  <button class="icon-btn" aria-label={t('Cancel')} onclick={() => (adding = null)}><Icon name="x" size={14} /></button>
                 </div>
               </div>
             {:else if col.id !== 'done'}
-              <button class="add" onclick={() => openAdd(col.id)}>+ Add task</button>
+              <button class="add" onclick={() => openAdd(col.id)}>{t('+ Add task')}</button>
             {/if}
           </section>
         {/each}

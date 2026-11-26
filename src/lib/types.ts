@@ -54,6 +54,7 @@ export interface Settings {
   idleMinutes: number; // 0 = off
   dueReminders: boolean;
   hideDoneAfterDays: number;
+  language: 'auto' | 'en' | 'fr';
 }
 
 export interface TimerState {

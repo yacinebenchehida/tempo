@@ -2,6 +2,7 @@ import type { Column, Data, Level, Project, Task, TimeEntry } from './types';
 import { PALETTE, MASCOT_KEYS } from './palette';
 import { uid } from './time';
 import { loadData, saveData } from './native';
+import { t as tr } from './i18n.svelte';
 
 export function emptyData(): Data {
   return {
@@ -16,6 +17,7 @@ export function emptyData(): Data {
       pomodoroLongEvery: 4,
       idleMinutes: 10,
       dueReminders: true,
+      language: 'auto',
       hideDoneAfterDays: 14
     },
     timer: { mode: 'stopwatch', phase: 'idle', taskId: null, pomoWorked: 0, pomoDone: 0, breakStart: null, breakLength: 5 },
@@ -63,7 +65,7 @@ export async function init() {
     const text = await loadData();
     if (text) Object.assign(db, migrate(JSON.parse(text)));
   } catch (e) {
-    ui.saveError = 'Could not read your data file: ' + String(e);
+    ui.saveError = tr('Could not read your data file: {e}', { e: String(e) });
   }
   lastSaved = JSON.stringify(db);
   ui.loaded = true;
@@ -88,7 +90,7 @@ async function flush(json: string) {
     lastSaved = json;
     ui.saveError = null;
   } catch (e) {
-    ui.saveError = 'Saving failed: ' + String(e);
+    ui.saveError = tr('Saving failed: {e}', { e: String(e) });
   }
 }
 
@@ -151,7 +153,7 @@ export function createTask(projectId: string, column: Column, title: string, ext
   const t: Task = {
     id: uid(),
     projectId,
-    title: title.trim() || 'Untitled task',
+    title: title.trim() || tr('Untitled task'),
     column,
     priority: 2 as Level,
     difficulty: 2 as Level,

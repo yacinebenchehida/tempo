@@ -1,6 +1,8 @@
 // Bridges to the Mac app. In a plain browser (used for development and
 // testing) each call falls back to something harmless.
 
+import { t } from './i18n.svelte';
+
 export const isApp = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
 async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -22,7 +24,7 @@ export async function saveData(json: string): Promise<void> {
 
 export async function dataLocation(): Promise<string> {
   if (isApp) return call<string>('data_location');
-  return 'Browser storage (development mode)';
+  return t('Browser storage (development mode)');
 }
 
 export async function exportFile(name: string, contents: string): Promise<string> {
@@ -32,7 +34,7 @@ export async function exportFile(name: string, contents: string): Promise<string
   a.href = URL.createObjectURL(blob);
   a.download = name;
   a.click();
-  return 'your Downloads folder';
+  return t('your Downloads folder');
 }
 
 export async function idleSeconds(): Promise<number> {
@@ -40,7 +42,7 @@ export async function idleSeconds(): Promise<number> {
   return 0;
 }
 
-export async function setTray(args: { title: string; color: string | null; task: string; toggle: string; canStop: boolean }) {
+export async function setTray(args: { title: string; color: string | null; task: string; toggle: string; stop: string; open: string; quit: string; canStop: boolean }) {
   if (!isApp) return;
   try {
     await call('set_tray', args);

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { db, ui, clock, projectById, activeProjects, createTask } from '../lib/store.svelte';
   import { tint } from '../lib/palette';
-  import { addDays, addMonths, dayKey, fmtDayLong, fmtDur, fmtTime, overlap, startOfMonth, startOfWeek, MONTHS, DAY } from '../lib/time';
+  import { addDays, addMonths, dayKey, fmtDayLong, fmtDur, fmtTime, overlap, startOfMonth, startOfWeek, months, weekHeader, DAY } from '../lib/time';
+  import { t, cap } from '../lib/i18n.svelte';
   import Icon from './Icon.svelte';
   import Mascot from './Mascot.svelte';
 
@@ -81,25 +82,25 @@
   <section class="main">
     <header>
       <div>
-        <span class="muted small">Due dates and time logged</span>
-        <h1 class="display">{MONTHS[month.getMonth()]} {month.getFullYear()}</h1>
+        <span class="muted small">{t('Due dates and time logged')}</span>
+        <h1 class="display">{cap(months()[month.getMonth()])} {month.getFullYear()}</h1>
       </div>
       <div class="nav">
-        <button class="btn square" aria-label="Previous month" onclick={() => offset--}><Icon name="left" /></button>
-        <button class="btn" onclick={() => { offset = 0; selected = today; }}>Today</button>
-        <button class="btn square" aria-label="Next month" onclick={() => offset++}><Icon name="right" /></button>
+        <button class="btn square" aria-label={t('Previous month')} onclick={() => offset--}><Icon name="left" /></button>
+        <button class="btn" onclick={() => { offset = 0; selected = today; }}>{t('Today')}</button>
+        <button class="btn square" aria-label={t('Next month')} onclick={() => offset++}><Icon name="right" /></button>
       </div>
     </header>
 
     <div class="filters">
-      <button class="chip" class:on={ui.filter === 'all'} onclick={() => (ui.filter = 'all')}><span class="dot" style:background="var(--ink)"></span>All</button>
+      <button class="chip" class:on={ui.filter === 'all'} onclick={() => (ui.filter = 'all')}><span class="dot" style:background="var(--ink)"></span>{t('All')}</button>
       {#each projects as p (p.id)}
         <button class="chip" class:on={ui.filter === p.id} onclick={() => (ui.filter = ui.filter === p.id ? 'all' : p.id)}><span class="dot" style:background={p.color}></span>{p.name}</button>
       {/each}
     </div>
 
     <div class="grid-wrap">
-      <div class="wk">{#each ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as w}<span>{w}</span>{/each}</div>
+      <div class="wk">{#each weekHeader() as w}<span>{w}</span>{/each}</div>
       <div class="grid">
         {#each days as day (day.key)}
           <div
@@ -114,30 +115,30 @@
             ondragover={(e) => { if (dragTask) { e.preventDefault(); overDay = day.key; } }}
             ondragleave={() => overDay === day.key && (overDay = null)}
             ondrop={(e) => { e.preventDefault(); dropOn(day.key); }}
-            aria-label="{fmtDayLong(day.d)}, {day.chips.length} due"
+            aria-label={t('{day}, {n} due', { day: fmtDayLong(day.d), n: day.chips.length })}
           >
             <div class="day-top">
               <span class="n" class:today={day.key === today}>{day.d.getDate()}</span>
               <span class="logged num">{day.total ? fmtDur(day.total) : ''}</span>
             </div>
             <div class="chips">
-              {#each day.chips.slice(0, 3) as t (t.id)}
-                {@const p = projectById(t.projectId)}
+              {#each day.chips.slice(0, 3) as task (task.id)}
+                {@const p = projectById(task.projectId)}
                 <span
                   class="c"
-                  class:done={t.column === 'done'}
+                  class:done={task.column === 'done'}
                   style:background={tint(p?.color ?? '#8A909C', 0.14)}
                   draggable="true"
-                  ondragstart={(e) => { dragTask = t.id; e.dataTransfer?.setData('text/plain', t.id); }}
+                  ondragstart={(e) => { dragTask = task.id; e.dataTransfer?.setData('text/plain', task.id); }}
                   ondragend={() => { dragTask = null; overDay = null; }}
-                  ondblclick={(e) => { e.stopPropagation(); ui.openTaskId = t.id; }}
-                  title="{t.title} · drag to change the due date, double-click to open"
+                  ondblclick={(e) => { e.stopPropagation(); ui.openTaskId = task.id; }}
+                  title={t('{title} · drag to change the due date, double-click to open', { title: task.title })}
                   role="note"
                 >
-                  <span class="cd" style:background={p?.color}></span><span class="ct">{t.title}</span>
+                  <span class="cd" style:background={p?.color}></span><span class="ct">{task.title}</span>
                 </span>
               {/each}
-              {#if day.chips.length > 3}<span class="more">+{day.chips.length - 3} more</span>{/if}
+              {#if day.chips.length > 3}<span class="more">{t('+{n} more', { n: day.chips.length - 3 })}</span>{/if}
             </div>
             {#if day.total}
               <div class="bar">
@@ -150,56 +151,56 @@
         {/each}
       </div>
     </div>
-    <p class="muted small">Chips are tasks due that day: drag one to another day to move it, double-click to open it. The thin bar shows the time you logged, split by project.</p>
+    <p class="muted small">{t('Chips are tasks due that day: drag one to another day to move it, double-click to open it. The thin bar shows the time you logged, split by project.')}</p>
   </section>
 
   <aside class="panel">
     <div>
-      <span class="muted small">{selected === today ? 'Today' : selected < today ? 'Past day' : 'Upcoming'}</span>
+      <span class="muted small">{t(selected === today ? 'Today' : selected < today ? 'Past day' : 'Upcoming')}</span>
       <h2 class="display">{fmtDayLong(sel.d)}</h2>
     </div>
 
     <div class="block">
-      <div class="block-head"><span class="eyebrow">Due</span>
-        {#if projects.length}<button class="btn small ghost" onclick={() => { adding = true; newProject = ui.filter !== 'all' ? ui.filter : projects[0].id; }}><Icon name="plus" size={12} />Task due this day</button>{/if}
+      <div class="block-head"><span class="eyebrow">{t('Due')}</span>
+        {#if projects.length}<button class="btn small ghost" onclick={() => { adding = true; newProject = ui.filter !== 'all' ? ui.filter : projects[0].id; }}><Icon name="plus" size={12} />{t('Task due this day')}</button>{/if}
       </div>
       {#if adding}
         <div class="adder">
-          <input class="input" placeholder="Task name" bind:value={newTitle} use:focus onkeydown={(e) => { if (e.key === 'Enter') addDue(); if (e.key === 'Escape') adding = false; }} />
+          <input class="input" placeholder={t('Task name')} bind:value={newTitle} use:focus onkeydown={(e) => { if (e.key === 'Enter') addDue(); if (e.key === 'Escape') adding = false; }} />
           <div class="adder-row">
             <select class="input" bind:value={newProject}>{#each projects as p (p.id)}<option value={p.id}>{p.name}</option>{/each}</select>
-            <button class="btn primary small" onclick={addDue}>Add</button>
+            <button class="btn primary small" onclick={addDue}>{t('Add')}</button>
           </div>
         </div>
       {/if}
-      {#if !sel.due.length && !adding}<span class="muted small">Nothing due.</span>{/if}
-      {#each sel.due as t (t.id)}
-        {@const p = projectById(t.projectId)}
-        <button class="due" style:background={tint(p?.color ?? '#8A909C', 0.12)} onclick={() => (ui.openTaskId = t.id)}>
+      {#if !sel.due.length && !adding}<span class="muted small">{t('Nothing due.')}</span>{/if}
+      {#each sel.due as task (task.id)}
+        {@const p = projectById(task.projectId)}
+        <button class="due" style:background={tint(p?.color ?? '#8A909C', 0.12)} onclick={() => (ui.openTaskId = task.id)}>
           {#if p}<Mascot kind={p.mascot} color={p.color} size={18} />{/if}
-          <span class="dt" class:done={t.column === 'done'}>{t.title}</span>
+          <span class="dt" class:done={task.column === 'done'}>{task.title}</span>
           <span class="small muted">{p?.name}</span>
         </button>
       {/each}
     </div>
 
     <div class="block">
-      <div class="block-head"><span class="eyebrow">Time log</span><span class="num strong">{sel.total ? fmtDur(sel.total) : ''}</span></div>
-      {#if !sel.log.length}<span class="muted small">No time logged.</span>{/if}
+      <div class="block-head"><span class="eyebrow">{t('Time log')}</span><span class="num strong">{sel.total ? fmtDur(sel.total) : ''}</span></div>
+      {#if !sel.log.length}<span class="muted small">{t('No time logged.')}</span>{/if}
       {#each sel.log as e (e.id)}
-        {@const t = db.tasks.find((x) => x.id === e.taskId)}
+        {@const task = db.tasks.find((x) => x.id === e.taskId)}
         {@const p = projectById(e.projectId)}
         <div class="entry">
           <span class="es" style:background={p?.color}></span>
           <div class="ei">
-            <span class="et">{t?.title ?? 'Deleted task'}</span>
-            <span class="muted small num">{fmtTime(e.start)} – {e.end ? fmtTime(e.end) : 'now'} · {p?.name}</span>
+            <span class="et">{task?.title ?? t('Deleted task')}</span>
+            <span class="muted small num">{fmtTime(e.start)} – {e.end ? fmtTime(e.end) : t('now')} · {p?.name}</span>
           </div>
           <span class="num">{fmtDur((e.end ?? clock.now) - e.start)}</span>
-          {#if e.end}<button class="icon-btn" aria-label="Edit entry" onclick={() => (ui.entryEditor = { id: e.id, taskId: e.taskId, day: selected })}><Icon name="edit" size={14} /></button>{/if}
+          {#if e.end}<button class="icon-btn" aria-label={t('Edit entry')} onclick={() => (ui.entryEditor = { id: e.id, taskId: e.taskId, day: selected })}><Icon name="edit" size={14} /></button>{/if}
         </div>
       {/each}
-      <button class="add" onclick={() => (ui.entryEditor = { id: null, taskId: null, day: selected })}>+ Add time manually</button>
+      <button class="add" onclick={() => (ui.entryEditor = { id: null, taskId: null, day: selected })}>{t('+ Add time manually')}</button>
     </div>
   </aside>
 </div>

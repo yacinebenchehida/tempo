@@ -9,6 +9,7 @@ A small, pretty Mac app to organise tasks and track the time you spend on them.
 - **Calendar**: tasks on their due dates (drag to reschedule), the time logged each day, and a day panel where you can add or correct time by hand.
 - **Summaries**: week, month and year views with a doughnut chart per project, stacked hours per day or month, estimated vs actual time, time of day, a project table and a short written review. Export everything as CSV.
 - **Projects**: as many as you like, each with its own colour and animal mascot. Archive old ones to keep their history.
+- **English or French**: follows your Mac's language, or choose in Settings.
 
 ## Install
 
