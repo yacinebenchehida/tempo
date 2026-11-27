@@ -7,6 +7,7 @@
   import Icon from './Icon.svelte';
   import Mascot from './Mascot.svelte';
   import TimerWidget from './TimerWidget.svelte';
+  import { SOUNDS, player, togglePlay, anySelected } from '../lib/sound.svelte';
   import { t } from '../lib/i18n.svelte';
 
   const nav = [
@@ -14,6 +15,7 @@
     { id: 'calendar', name: 'Calendar', icon: 'calendar' },
     { id: 'summaries', name: 'Summaries', icon: 'chart' },
     { id: 'history', name: 'History', icon: 'history' },
+    { id: 'sounds', name: 'Sounds', icon: 'sound' },
     { id: 'settings', name: 'Settings', icon: 'settings' }
   ] as const;
 
@@ -78,6 +80,16 @@
     {/if}
   </div>
 
+  {#if anySelected()}
+    <div class="soundbar" class:on={player.playing}>
+      <button class="sb-play" onclick={togglePlay} aria-label={t(player.playing ? 'Pause' : 'Play')}><Icon name={player.playing ? 'pause' : 'play'} size={11} /></button>
+      <button class="sb-names" onclick={() => (ui.view = 'sounds')}>
+        <Icon name="sound" size={13} />
+        <span>{SOUNDS.filter((x) => db.sound.on[x.id]).map((x) => t(x.name)).join(' · ')}</span>
+      </button>
+    </div>
+  {/if}
+
   <TimerWidget />
 </aside>
 
@@ -106,6 +118,12 @@
   .badge { width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
   .name { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .time { font-size: 12px; color: var(--ink-3); }
+  .soundbar { margin-top: auto; margin-bottom: -10px; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 12px; background: var(--sunken); }
+  .soundbar + :global(.timer) { margin-top: 0; }
+  .sb-play { width: 28px; height: 28px; border-radius: 14px; border: 0; background: var(--surface); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+  .soundbar.on .sb-play { background: var(--ink); color: #fff; }
+  .sb-names { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; border: 0; background: transparent; font-size: 12px; color: var(--ink-2); text-align: left; padding: 0; }
+  .sb-names span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .edit { opacity: 0; width: 28px; height: 28px; margin-right: 2px; }
   .proj:hover .edit, .edit:focus-visible { opacity: 1; }
 </style>

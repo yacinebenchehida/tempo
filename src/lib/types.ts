@@ -72,6 +72,20 @@ export interface TimerState {
   breakLength: number; // minutes
 }
 
+export interface SoundMix {
+  id: string;
+  name: string;
+  volumes: Record<string, number>; // sound id -> 0..1, only the sounds that are on
+}
+
+export interface SoundState {
+  on: Record<string, boolean>;
+  volumes: Record<string, number>;
+  master: number;
+  mixes: SoundMix[];
+  withTimer: boolean;
+}
+
 export interface Data {
   version: 1;
   projects: Project[];
@@ -79,6 +93,7 @@ export interface Data {
   entries: TimeEntry[];
   settings: Settings;
   timer: TimerState;
+  sound: SoundState;
   meta: { lastDueReminder: string | null };
 }
 

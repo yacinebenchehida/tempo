@@ -11,6 +11,8 @@
   import Summaries from './components/Summaries.svelte';
   import Settings from './components/Settings.svelte';
   import History from './components/History.svelte';
+  import Sounds from './components/Sounds.svelte';
+  import { startSoundSync } from './lib/sound.svelte';
   import TaskDrawer from './components/TaskDrawer.svelte';
   import ProjectEditor from './components/ProjectEditor.svelte';
   import EntryEditor from './components/EntryEditor.svelte';
@@ -21,6 +23,7 @@
   onMount(async () => {
     await init();
     startClock();
+    startSoundSync();
   });
 
   $effect(() => {
@@ -51,6 +54,7 @@
       {:else if ui.view === 'calendar'}<Calendar />
       {:else if ui.view === 'summaries'}<Summaries />
       {:else if ui.view === 'history'}<History />
+      {:else if ui.view === 'sounds'}<Sounds />
       {:else}<Settings />{/if}
     </main>
   </div>

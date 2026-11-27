@@ -21,13 +21,14 @@ export function emptyData(): Data {
       hideDoneAfterDays: 14
     },
     timer: { mode: 'stopwatch', phase: 'idle', taskId: null, subtaskId: null, pomoWorked: 0, pomoDone: 0, breakStart: null, breakLength: 5 },
-    meta: { lastDueReminder: null }
+    meta: { lastDueReminder: null },
+    sound: { on: {}, volumes: {}, master: 0.8, mixes: [], withTimer: false }
   };
 }
 
 export const db: Data = $state(emptyData());
 
-export type View = 'board' | 'calendar' | 'summaries' | 'history' | 'settings';
+export type View = 'board' | 'calendar' | 'summaries' | 'history' | 'sounds' | 'settings';
 
 export const ui = $state({
   loaded: false,
@@ -53,7 +54,8 @@ function migrate(raw: any): Data {
     ...raw,
     settings: { ...base.settings, ...(raw.settings ?? {}) },
     timer: { ...base.timer, ...(raw.timer ?? {}) },
-    meta: { ...base.meta, ...(raw.meta ?? {}) }
+    meta: { ...base.meta, ...(raw.meta ?? {}) },
+    sound: { ...base.sound, ...(raw.sound ?? {}) }
   };
   // Tasks from before "planned week" existed count as planned this week.
   const monday = thisMonday();

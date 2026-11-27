@@ -362,5 +362,25 @@ const FR: Record<string, string> = {
   'Nothing matches your search.': 'Rien ne correspond à votre recherche.',
   'No tasks yet.': 'Aucune tâche pour l’instant.',
   Started: 'Commencée',
-  subtasks: 'sous-tâches'
+  subtasks: 'sous-tâches',
+
+  // sounds
+  Sounds: 'Sons',
+  'Pick the sounds you are in the mood for, then press play.': 'Choisissez les sons qui vous font envie, puis lancez la lecture.',
+  Play: 'Lecture',
+  Volume: 'Volume',
+  'Volume of {name}': 'Volume : {name}',
+  Rain: 'Pluie',
+  Ocean: 'Océan',
+  Wind: 'Vent',
+  Stream: 'Ruisseau',
+  Fire: 'Feu de cheminée',
+  'Brown noise': 'Bruit brun',
+  'Pink noise': 'Bruit rose',
+  'White noise': 'Bruit blanc',
+  Mixes: 'Ambiances',
+  'Mix name': 'Nom de l’ambiance',
+  'Save this mix': 'Enregistrer cette ambiance',
+  'Turn on a few sounds, set their volumes, then save the mix to find it again in one click.': 'Activez quelques sons, réglez leur volume, puis enregistrez l’ambiance pour la retrouver en un clic.',
+  'Start and stop the sounds with the task timer': 'Lancer et arrêter les sons avec le chrono des tâches'
 };
